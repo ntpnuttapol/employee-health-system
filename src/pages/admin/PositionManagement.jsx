@@ -2,28 +2,61 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function PositionManagement() {
-  const { positions, loading, addPosition } = useMasterData();
+  const { positions, loading, addPosition, updatePosition, deletePosition } = useMasterData();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ name: '', level: 'ปฏิบัติการ' });
+  const [formData, setFormData] = useState({ id: null, name: '', level: 'ปฏิบัติการ' });
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const filteredPositions = positions.filter(pos =>
     pos.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     pos.level.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleOpenAdd = () => {
+    setFormData({ id: null, name: '', level: 'ปฏิบัติการ' });
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (pos) => {
+    setFormData({ 
+      id: pos.id, 
+      name: pos.name, 
+      level: pos.level || 'ปฏิบัติการ'
+    });
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const result = await addPosition(formData.name, formData.level);
+    
+    let result;
+    if (isEditing) {
+      result = await updatePosition(formData.id, formData.name, formData.level);
+    } else {
+      result = await addPosition(formData.name, formData.level);
+    }
+    
     setSubmitting(false);
 
     if (result.success) {
       setShowModal(false);
-      setFormData({ name: '', level: 'ปฏิบัติการ' });
+      setFormData({ id: null, name: '', level: 'ปฏิบัติการ' });
     } else {
-      alert('Error adding position: ' + result.error.message);
+      alert('Error: ' + result.error.message);
+    }
+  };
+
+  const handleDelete = async (pos) => {
+    if (window.confirm(`ยืนยันลบตำแหน่ง "${pos.name}"?`)) {
+      const result = await deletePosition(pos.id);
+      if (!result.success) {
+        alert('Error deleting position: ' + result.error.message);
+      }
     }
   };
 
@@ -41,7 +74,7 @@ export default function PositionManagement() {
       <div className="page-header">
         <h1 className="page-title">💼 จัดการตำแหน่ง (Positions)</h1>
         <div className="page-header-actions">
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn btn-primary" onClick={handleOpenAdd}>
             ➕ เพิ่มตำแหน่ง
           </button>
         </div>
@@ -81,7 +114,20 @@ export default function PositionManagement() {
                     <td><span className={`badge ${getLevelBadge(pos.level)}`}>{pos.level}</span></td>
                     <td><span className="badge badge-success">ใช้งาน</span></td>
                     <td>
-                      <button className="btn btn-sm btn-secondary">✏️</button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => handleOpenEdit(pos)}
+                        >
+                          ✏️ แก้ไข
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(pos)}
+                        >
+                          🗑️ ลบ
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -105,7 +151,7 @@ export default function PositionManagement() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">➕ เพิ่มตำแหน่งใหม่</h3>
+              <h3 className="modal-title">{isEditing ? '✏️ แก้ไขตำแหน่ง' : '➕ เพิ่มตำแหน่งใหม่'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>

@@ -2,11 +2,12 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function BranchManagement() {
-  const { branches, loading, addBranch } = useMasterData();
+  const { branches, loading, addBranch, updateBranch, deleteBranch } = useMasterData();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ name: '', address: '', phone: '' });
+  const [formData, setFormData] = useState({ id: null, name: '', address: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Filter branches based on search
   const filteredBranches = branches.filter(branch =>
@@ -14,17 +15,50 @@ export default function BranchManagement() {
     branch.address?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleOpenAdd = () => {
+    setFormData({ id: null, name: '', address: '', phone: '' });
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (branch) => {
+    setFormData({ 
+      id: branch.id, 
+      name: branch.name, 
+      address: branch.address || '', 
+      phone: branch.phone || '' 
+    });
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const result = await addBranch(formData.name, formData.address, formData.phone);
+    
+    let result;
+    if (isEditing) {
+      result = await updateBranch(formData.id, formData.name, formData.address, formData.phone);
+    } else {
+      result = await addBranch(formData.name, formData.address, formData.phone);
+    }
+    
     setSubmitting(false);
 
     if (result.success) {
       setShowModal(false);
-      setFormData({ name: '', address: '', phone: '' });
+      setFormData({ id: null, name: '', address: '', phone: '' });
     } else {
-      alert('Error adding branch: ' + result.error.message);
+      alert('Error: ' + result.error.message);
+    }
+  };
+
+  const handleDelete = async (branch) => {
+    if (window.confirm(`ยืนยันลบสาขา "${branch.name}"?`)) {
+      const result = await deleteBranch(branch.id);
+      if (!result.success) {
+        alert('Error deleting branch: ' + result.error.message);
+      }
     }
   };
 
@@ -33,7 +67,7 @@ export default function BranchManagement() {
       <div className="page-header">
         <h1 className="page-title">🏢 จัดการสาขา (Branches)</h1>
         <div className="page-header-actions">
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn btn-primary" onClick={handleOpenAdd}>
             ➕ เพิ่มสาขา
           </button>
         </div>
@@ -75,7 +109,20 @@ export default function BranchManagement() {
                     <td>{branch.phone || '-'}</td>
                     <td><span className="badge badge-success">ใช้งาน</span></td>
                     <td>
-                      <button className="btn btn-sm btn-secondary">✏️</button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => handleOpenEdit(branch)}
+                        >
+                          ✏️ แก้ไข
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(branch)}
+                        >
+                          🗑️ ลบ
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -99,7 +146,7 @@ export default function BranchManagement() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">➕ เพิ่มสาขาใหม่</h3>
+              <h3 className="modal-title">{isEditing ? '✏️ แก้ไขสาขา' : '➕ เพิ่มสาขาใหม่'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>

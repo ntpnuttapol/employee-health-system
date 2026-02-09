@@ -2,37 +2,70 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function DepartmentManagement() {
-  const { departments, branches, loading, addDepartment } = useMasterData();
+  const { departments, branches, loading, addDepartment, updateDepartment, deleteDepartment } = useMasterData();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ name: '', branchId: '' });
+  const [formData, setFormData] = useState({ id: null, name: '', branchId: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const filteredDepartments = departments.filter(dept =>
     dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     dept.branches?.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleOpenAdd = () => {
+    setFormData({ id: null, name: '', branchId: '' });
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (dept) => {
+    setFormData({ 
+      id: dept.id, 
+      name: dept.name, 
+      branchId: dept.branch_id || ''
+    });
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const result = await addDepartment(formData.name, formData.branchId);
+    
+    let result;
+    if (isEditing) {
+      result = await updateDepartment(formData.id, formData.name, formData.branchId);
+    } else {
+      result = await addDepartment(formData.name, formData.branchId);
+    }
+    
     setSubmitting(false);
 
     if (result.success) {
       setShowModal(false);
-      setFormData({ name: '', branchId: '' });
+      setFormData({ id: null, name: '', branchId: '' });
     } else {
-      alert('Error adding department: ' + result.error.message);
+      alert('Error: ' + result.error.message);
+    }
+  };
+
+  const handleDelete = async (dept) => {
+    if (window.confirm(`ยืนยันลบแผนก "${dept.name}"?`)) {
+      const result = await deleteDepartment(dept.id);
+      if (!result.success) {
+        alert('Error deleting department: ' + result.error.message);
+      }
     }
   };
 
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">🏢 จัดการแผนก (Departments)</h1>
+        <h1 className="page-title">🏛️ จัดการแผนก (Departments)</h1>
         <div className="page-header-actions">
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn btn-primary" onClick={handleOpenAdd}>
             ➕ เพิ่มแผนก
           </button>
         </div>
@@ -72,7 +105,20 @@ export default function DepartmentManagement() {
                     <td><span className="badge badge-info">{dept.branches?.name || '-'}</span></td>
                     <td><span className="badge badge-success">ใช้งาน</span></td>
                     <td>
-                      <button className="btn btn-sm btn-secondary">✏️</button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => handleOpenEdit(dept)}
+                        >
+                          ✏️ แก้ไข
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(dept)}
+                        >
+                          🗑️ ลบ
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -80,7 +126,7 @@ export default function DepartmentManagement() {
                 <tr>
                   <td colSpan="4">
                     <div className="empty-state">
-                      <div className="empty-state-icon">👥</div>
+                      <div className="empty-state-icon">🏛️</div>
                       <div className="empty-state-title">ไม่พบข้อมูลแผนก</div>
                     </div>
                   </td>
@@ -96,7 +142,7 @@ export default function DepartmentManagement() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">➕ เพิ่มแผนกใหม่</h3>
+              <h3 className="modal-title">{isEditing ? '✏️ แก้ไขแผนก' : '➕ เพิ่มแผนกใหม่'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>

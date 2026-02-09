@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function EmployeeManagement() {
-  const { employees, branches, departments, positions, loading, addEmployee } = useMasterData();
+  const { employees, branches, departments, positions, loading, addEmployee, updateEmployee, deleteEmployee } = useMasterData();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
-    code: '', firstName: '', lastName: '', email: '', phone: '',
+    id: null, code: '', firstName: '', lastName: '', email: '', phone: '',
     branchId: '', departmentId: '', positionId: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Filter employees
   const filteredEmployees = employees.filter(emp =>
@@ -18,20 +19,61 @@ export default function EmployeeManagement() {
     emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleOpenAdd = () => {
+    setFormData({
+      id: null, code: '', firstName: '', lastName: '', email: '', phone: '',
+      branchId: '', departmentId: '', positionId: ''
+    });
+    setIsEditing(false);
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (emp) => {
+    setFormData({
+      id: emp.id,
+      code: emp.employee_code || '',
+      firstName: emp.first_name || '',
+      lastName: emp.last_name || '',
+      email: emp.email || '',
+      phone: emp.phone || '',
+      branchId: emp.branch_id || '',
+      departmentId: emp.department_id || '',
+      positionId: emp.position_id || ''
+    });
+    setIsEditing(true);
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const result = await addEmployee(formData);
+    
+    let result;
+    if (isEditing) {
+      result = await updateEmployee(formData.id, formData);
+    } else {
+      result = await addEmployee(formData);
+    }
+    
     setSubmitting(false);
 
     if (result.success) {
       setShowModal(false);
       setFormData({
-        code: '', firstName: '', lastName: '', email: '', phone: '',
+        id: null, code: '', firstName: '', lastName: '', email: '', phone: '',
         branchId: '', departmentId: '', positionId: ''
       });
     } else {
-      alert('Error adding employee: ' + result.error.message);
+      alert('Error: ' + result.error.message);
+    }
+  };
+
+  const handleDelete = async (emp) => {
+    if (window.confirm(`ยืนยันลบพนักงาน "${emp.first_name} ${emp.last_name}"?`)) {
+      const result = await deleteEmployee(emp.id);
+      if (!result.success) {
+        alert('Error deleting employee: ' + result.error.message);
+      }
     }
   };
 
@@ -40,7 +82,7 @@ export default function EmployeeManagement() {
       <div className="page-header">
         <h1 className="page-title">👥 จัดการพนักงาน (Employees)</h1>
         <div className="page-header-actions">
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <button className="btn btn-primary" onClick={handleOpenAdd}>
             ➕ เพิ่มพนักงาน
           </button>
         </div>
@@ -92,7 +134,20 @@ export default function EmployeeManagement() {
                       <div className="text-muted text-xs">{emp.email}</div>
                     </td>
                     <td>
-                      <button className="btn btn-sm btn-secondary">✏️</button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => handleOpenEdit(emp)}
+                        >
+                          ✏️ แก้ไข
+                        </button>
+                        <button 
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDelete(emp)}
+                        >
+                          🗑️ ลบ
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -116,7 +171,7 @@ export default function EmployeeManagement() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal" style={{ maxWidth: '700px' }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 className="modal-title">➕ เพิ่มพนักงานใหม่</h3>
+              <h3 className="modal-title">{isEditing ? '✏️ แก้ไขพนักงาน' : '➕ เพิ่มพนักงานใหม่'}</h3>
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSubmit}>

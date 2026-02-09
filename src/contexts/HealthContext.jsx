@@ -21,7 +21,9 @@ export function HealthProvider({ children }) {
             first_name,
             last_name,
             employee_code,
-            departments (name)
+            branch_id,
+            departments (name),
+            branches (id, name)
           )
         `)
         .order('recorded_at', { ascending: false });

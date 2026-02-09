@@ -27,7 +27,7 @@ export default function HealthRecords() {
     const matchesDept = !departmentFilter || record.employees?.departments?.name === departmentFilter;
     
     // Filter by branch
-    const matchesBranch = !branchFilter || record.employees?.branch_id === parseInt(branchFilter);
+    const matchesBranch = !branchFilter || record.employees?.branches?.id === parseInt(branchFilter);
     
     // Filter by date range
     const recordDate = record.recorded_at ? new Date(record.recorded_at) : null;

@@ -36,7 +36,6 @@ export function MasterDataProvider({ children }) {
   useEffect(() => {
     fetchData();
 
-    // Try to set up realtime subscriptions (may fail if not enabled)
     try {
       const channels = ['branches', 'departments', 'positions', 'employees'].map(table => {
         return supabase
@@ -58,80 +57,82 @@ export function MasterDataProvider({ children }) {
     }
   }, [fetchData]);
 
-  // CRUD Functions with manual refetch after success
-
+  // ============ BRANCHES ============
   const addBranch = async (name, address, phone) => {
     const { error } = await supabase.from('branches').insert([{ name, address, phone }]);
-    if (!error) {
-      await fetchData(); // Refetch after success
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
   const updateBranch = async (id, name, address, phone) => {
     const { error } = await supabase.from('branches').update({ name, address, phone }).eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
-  const deleteBranch = async (id) => {
-    const { error } = await supabase.from('branches').delete().eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+  const deactivateBranch = async (id) => {
+    const { error } = await supabase.from('branches').update({ is_active: false }).eq('id', id);
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
+  const activateBranch = async (id) => {
+    const { error } = await supabase.from('branches').update({ is_active: true }).eq('id', id);
+    if (!error) await fetchData();
+    return { success: !error, error };
+  };
+
+  // ============ DEPARTMENTS ============
   const addDepartment = async (name, branchId) => {
     const { error } = await supabase.from('departments').insert([{ name, branch_id: branchId }]);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
   const updateDepartment = async (id, name, branchId) => {
     const { error } = await supabase.from('departments').update({ name, branch_id: branchId }).eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
-  const deleteDepartment = async (id) => {
-    const { error } = await supabase.from('departments').delete().eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+  const deactivateDepartment = async (id) => {
+    const { error } = await supabase.from('departments').update({ is_active: false }).eq('id', id);
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
+  const activateDepartment = async (id) => {
+    const { error } = await supabase.from('departments').update({ is_active: true }).eq('id', id);
+    if (!error) await fetchData();
+    return { success: !error, error };
+  };
+
+  // ============ POSITIONS ============
   const addPosition = async (name, level) => {
     const { error } = await supabase.from('positions').insert([{ name, level }]);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
   const updatePosition = async (id, name, level) => {
     const { error } = await supabase.from('positions').update({ name, level }).eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
-  const deletePosition = async (id) => {
-    const { error } = await supabase.from('positions').delete().eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+  const deactivatePosition = async (id) => {
+    const { error } = await supabase.from('positions').update({ is_active: false }).eq('id', id);
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
+  const activatePosition = async (id) => {
+    const { error } = await supabase.from('positions').update({ is_active: true }).eq('id', id);
+    if (!error) await fetchData();
+    return { success: !error, error };
+  };
+
+  // ============ EMPLOYEES ============
   const addEmployee = async (employeeData) => {
     const dbData = {
       employee_code: employeeData.code,
@@ -145,9 +146,7 @@ export function MasterDataProvider({ children }) {
       photo_url: employeeData.photo || null
     };
     const { error } = await supabase.from('employees').insert([dbData]);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
@@ -164,34 +163,32 @@ export function MasterDataProvider({ children }) {
       photo_url: employeeData.photo || null
     };
     const { error } = await supabase.from('employees').update(dbData).eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
   const deactivateEmployee = async (id) => {
     const { error } = await supabase.from('employees').update({ is_active: false }).eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
   const activateEmployee = async (id) => {
     const { error } = await supabase.from('employees').update({ is_active: true }).eq('id', id);
-    if (!error) {
-      await fetchData();
-    }
+    if (!error) await fetchData();
     return { success: !error, error };
   };
 
   return (
     <MasterDataContext.Provider value={{
       branches, departments, positions, employees, loading, refetch: fetchData,
-      addBranch, updateBranch, deleteBranch,
-      addDepartment, updateDepartment, deleteDepartment,
-      addPosition, updatePosition, deletePosition,
+      // Branches
+      addBranch, updateBranch, deactivateBranch, activateBranch,
+      // Departments
+      addDepartment, updateDepartment, deactivateDepartment, activateDepartment,
+      // Positions
+      addPosition, updatePosition, deactivatePosition, activatePosition,
+      // Employees
       addEmployee, updateEmployee, deactivateEmployee, activateEmployee
     }}>
       {children}

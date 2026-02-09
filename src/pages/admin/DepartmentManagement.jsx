@@ -2,17 +2,21 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function DepartmentManagement() {
-  const { departments, branches, loading, addDepartment, updateDepartment, deleteDepartment } = useMasterData();
+  const { departments, branches, loading, addDepartment, updateDepartment, deactivateDepartment, activateDepartment } = useMasterData();
   const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', branchId: '' });
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  const filteredDepartments = departments.filter(dept =>
-    dept.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    dept.branches?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter only active branches for dropdown
+  const activeBranches = branches.filter(b => b.is_active !== false);
+
+  // Filter departments by active status
+  const filteredDepartments = departments.filter(d => {
+    const isActive = d.is_active !== false;
+    return showInactive ? true : isActive;
+  });
 
   const handleOpenAdd = () => {
     setFormData({ id: null, name: '', branchId: '' });
@@ -51,11 +55,17 @@ export default function DepartmentManagement() {
     }
   };
 
-  const handleDelete = async (dept) => {
-    if (window.confirm(`ยืนยันลบแผนก "${dept.name}"?`)) {
-      const result = await deleteDepartment(dept.id);
+  const handleToggleActive = async (dept) => {
+    const isCurrentlyActive = dept.is_active !== false;
+    const action = isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+    
+    if (window.confirm(`ยืนยัน${action}แผนก "${dept.name}"?`)) {
+      const result = isCurrentlyActive 
+        ? await deactivateDepartment(dept.id)
+        : await activateDepartment(dept.id);
+        
       if (!result.success) {
-        alert('Error deleting department: ' + result.error.message);
+        alert('Error: ' + result.error.message);
       }
     }
   };
@@ -72,17 +82,15 @@ export default function DepartmentManagement() {
       </div>
 
       <div className="card">
-        <div className="search-bar">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
             <input
-              type="text"
-              className="search-input"
-              placeholder="ค้นหาแผนก..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
             />
-          </div>
+            แสดงแผนกที่ปิดใช้งาน
+          </label>
         </div>
 
         <div className="table-container">
@@ -99,35 +107,42 @@ export default function DepartmentManagement() {
               {loading ? (
                 <tr><td colSpan="4" className="text-center">กำลังโหลดข้อมูล...</td></tr>
               ) : filteredDepartments.length > 0 ? (
-                filteredDepartments.map((dept) => (
-                  <tr key={dept.id}>
-                    <td className="font-medium">{dept.name}</td>
-                    <td><span className="badge badge-info">{dept.branches?.name || '-'}</span></td>
-                    <td><span className="badge badge-success">ใช้งาน</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className="btn btn-sm btn-secondary"
-                          onClick={() => handleOpenEdit(dept)}
-                        >
-                          ✏️ แก้ไข
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(dept)}
-                        >
-                          🗑️ ลบ
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredDepartments.map((dept) => {
+                  const isActive = dept.is_active !== false;
+                  return (
+                    <tr key={dept.id} style={{ opacity: isActive ? 1 : 0.6 }}>
+                      <td className="font-medium">{dept.name}</td>
+                      <td>{dept.branches?.name || '-'}</td>
+                      <td>
+                        <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
+                          {isActive ? '✓ เปิดใช้งาน' : '✗ ปิดใช้งาน'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => handleOpenEdit(dept)}
+                          >
+                            ✏️ แก้ไข
+                          </button>
+                          <button 
+                            className={`btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}`}
+                            onClick={() => handleToggleActive(dept)}
+                          >
+                            {isActive ? '🚫 ปิด' : '✓ เปิด'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="4">
                     <div className="empty-state">
                       <div className="empty-state-icon">🏛️</div>
-                      <div className="empty-state-title">ไม่พบข้อมูลแผนก</div>
+                      <div className="empty-state-title">ไม่มีข้อมูลแผนก</div>
                     </div>
                   </td>
                 </tr>
@@ -158,7 +173,7 @@ export default function DepartmentManagement() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label required">สาขา</label>
+                  <label className="form-label required">สังกัดสาขา</label>
                   <select
                     className="form-select"
                     value={formData.branchId}
@@ -166,8 +181,8 @@ export default function DepartmentManagement() {
                     required
                   >
                     <option value="">-- เลือกสาขา --</option>
-                    {branches.map(branch => (
-                      <option key={branch.id} value={branch.id}>{branch.name}</option>
+                    {activeBranches.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
                 </div>

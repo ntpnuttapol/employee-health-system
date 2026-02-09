@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function BranchManagement() {
-  const { branches, loading, addBranch, updateBranch, deleteBranch } = useMasterData();
+  const { branches, loading, addBranch, updateBranch, deactivateBranch, activateBranch } = useMasterData();
   const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', address: '', phone: '' });
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Filter branches based on search
-  const filteredBranches = branches.filter(branch =>
-    branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    branch.address?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter branches by active status
+  const filteredBranches = branches.filter(b => {
+    const isActive = b.is_active !== false;
+    return showInactive ? true : isActive;
+  });
 
   const handleOpenAdd = () => {
     setFormData({ id: null, name: '', address: '', phone: '' });
@@ -53,11 +53,17 @@ export default function BranchManagement() {
     }
   };
 
-  const handleDelete = async (branch) => {
-    if (window.confirm(`ยืนยันลบสาขา "${branch.name}"?`)) {
-      const result = await deleteBranch(branch.id);
+  const handleToggleActive = async (branch) => {
+    const isCurrentlyActive = branch.is_active !== false;
+    const action = isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+    
+    if (window.confirm(`ยืนยัน${action}สาขา "${branch.name}"?`)) {
+      const result = isCurrentlyActive 
+        ? await deactivateBranch(branch.id)
+        : await activateBranch(branch.id);
+        
       if (!result.success) {
-        alert('Error deleting branch: ' + result.error.message);
+        alert('Error: ' + result.error.message);
       }
     }
   };
@@ -74,17 +80,15 @@ export default function BranchManagement() {
       </div>
 
       <div className="card">
-        <div className="search-bar">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
             <input
-              type="text"
-              className="search-input"
-              placeholder="ค้นหาสาขา..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
             />
-          </div>
+            แสดงสาขาที่ปิดใช้งาน
+          </label>
         </div>
 
         <div className="table-container">
@@ -93,7 +97,7 @@ export default function BranchManagement() {
               <tr>
                 <th>ชื่อสาขา</th>
                 <th>ที่อยู่</th>
-                <th>เบอร์โทรศัพท์</th>
+                <th>โทรศัพท์</th>
                 <th>สถานะ</th>
                 <th>จัดการ</th>
               </tr>
@@ -102,36 +106,43 @@ export default function BranchManagement() {
               {loading ? (
                 <tr><td colSpan="5" className="text-center">กำลังโหลดข้อมูล...</td></tr>
               ) : filteredBranches.length > 0 ? (
-                filteredBranches.map((branch) => (
-                  <tr key={branch.id}>
-                    <td className="font-medium">{branch.name}</td>
-                    <td>{branch.address || '-'}</td>
-                    <td>{branch.phone || '-'}</td>
-                    <td><span className="badge badge-success">ใช้งาน</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className="btn btn-sm btn-secondary"
-                          onClick={() => handleOpenEdit(branch)}
-                        >
-                          ✏️ แก้ไข
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(branch)}
-                        >
-                          🗑️ ลบ
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredBranches.map((branch) => {
+                  const isActive = branch.is_active !== false;
+                  return (
+                    <tr key={branch.id} style={{ opacity: isActive ? 1 : 0.6 }}>
+                      <td className="font-medium">{branch.name}</td>
+                      <td>{branch.address || '-'}</td>
+                      <td>{branch.phone || '-'}</td>
+                      <td>
+                        <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
+                          {isActive ? '✓ เปิดใช้งาน' : '✗ ปิดใช้งาน'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => handleOpenEdit(branch)}
+                          >
+                            ✏️ แก้ไข
+                          </button>
+                          <button 
+                            className={`btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}`}
+                            onClick={() => handleToggleActive(branch)}
+                          >
+                            {isActive ? '🚫 ปิด' : '✓ เปิด'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="5">
                     <div className="empty-state">
                       <div className="empty-state-icon">🏢</div>
-                      <div className="empty-state-title">ไม่พบข้อมูลสาขา</div>
+                      <div className="empty-state-title">ไม่มีข้อมูลสาขา</div>
                     </div>
                   </td>
                 </tr>
@@ -163,8 +174,9 @@ export default function BranchManagement() {
                 </div>
                 <div className="form-group">
                   <label className="form-label">ที่อยู่</label>
-                  <textarea
-                    className="form-textarea"
+                  <input
+                    type="text"
+                    className="form-input"
                     value={formData.address}
                     onChange={e => setFormData({...formData, address: e.target.value})}
                   />

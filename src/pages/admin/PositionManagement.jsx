@@ -2,17 +2,20 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function PositionManagement() {
-  const { positions, loading, addPosition, updatePosition, deletePosition } = useMasterData();
+  const { positions, loading, addPosition, updatePosition, deactivatePosition, activatePosition } = useMasterData();
   const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [formData, setFormData] = useState({ id: null, name: '', level: 'ปฏิบัติการ' });
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  const filteredPositions = positions.filter(pos =>
-    pos.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    pos.level.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const levels = ['ผู้บริหาร', 'หัวหน้างาน', 'ปฏิบัติการ'];
+
+  // Filter positions by active status
+  const filteredPositions = positions.filter(p => {
+    const isActive = p.is_active !== false;
+    return showInactive ? true : isActive;
+  });
 
   const handleOpenAdd = () => {
     setFormData({ id: null, name: '', level: 'ปฏิบัติการ' });
@@ -51,20 +54,25 @@ export default function PositionManagement() {
     }
   };
 
-  const handleDelete = async (pos) => {
-    if (window.confirm(`ยืนยันลบตำแหน่ง "${pos.name}"?`)) {
-      const result = await deletePosition(pos.id);
+  const handleToggleActive = async (pos) => {
+    const isCurrentlyActive = pos.is_active !== false;
+    const action = isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+    
+    if (window.confirm(`ยืนยัน${action}ตำแหน่ง "${pos.name}"?`)) {
+      const result = isCurrentlyActive 
+        ? await deactivatePosition(pos.id)
+        : await activatePosition(pos.id);
+        
       if (!result.success) {
-        alert('Error deleting position: ' + result.error.message);
+        alert('Error: ' + result.error.message);
       }
     }
   };
 
   const getLevelBadge = (level) => {
     switch (level) {
-      case 'บริหาร': return 'badge-primary';
-      case 'ปฏิบัติการ': return 'badge-info';
-      case 'ฝึกงาน': return 'badge-warning';
+      case 'ผู้บริหาร': return 'badge-warning';
+      case 'หัวหน้างาน': return 'badge-info';
       default: return 'badge-secondary';
     }
   };
@@ -81,17 +89,15 @@ export default function PositionManagement() {
       </div>
 
       <div className="card">
-        <div className="search-bar">
-          <div className="search-input-wrapper">
-            <span className="search-icon">🔍</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
             <input
-              type="text"
-              className="search-input"
-              placeholder="ค้นหาตำแหน่ง..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
             />
-          </div>
+            แสดงตำแหน่งที่ปิดใช้งาน
+          </label>
         </div>
 
         <div className="table-container">
@@ -108,35 +114,46 @@ export default function PositionManagement() {
               {loading ? (
                 <tr><td colSpan="4" className="text-center">กำลังโหลดข้อมูล...</td></tr>
               ) : filteredPositions.length > 0 ? (
-                filteredPositions.map((pos) => (
-                  <tr key={pos.id}>
-                    <td className="font-medium">{pos.name}</td>
-                    <td><span className={`badge ${getLevelBadge(pos.level)}`}>{pos.level}</span></td>
-                    <td><span className="badge badge-success">ใช้งาน</span></td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className="btn btn-sm btn-secondary"
-                          onClick={() => handleOpenEdit(pos)}
-                        >
-                          ✏️ แก้ไข
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(pos)}
-                        >
-                          🗑️ ลบ
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                filteredPositions.map((pos) => {
+                  const isActive = pos.is_active !== false;
+                  return (
+                    <tr key={pos.id} style={{ opacity: isActive ? 1 : 0.6 }}>
+                      <td className="font-medium">{pos.name}</td>
+                      <td>
+                        <span className={`badge ${getLevelBadge(pos.level)}`}>
+                          {pos.level || '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}>
+                          {isActive ? '✓ เปิดใช้งาน' : '✗ ปิดใช้งาน'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => handleOpenEdit(pos)}
+                          >
+                            ✏️ แก้ไข
+                          </button>
+                          <button 
+                            className={`btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}`}
+                            onClick={() => handleToggleActive(pos)}
+                          >
+                            {isActive ? '🚫 ปิด' : '✓ เปิด'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="4">
                     <div className="empty-state">
                       <div className="empty-state-icon">💼</div>
-                      <div className="empty-state-title">ไม่พบข้อมูลตำแหน่ง</div>
+                      <div className="empty-state-title">ไม่มีข้อมูลตำแหน่ง</div>
                     </div>
                   </td>
                 </tr>
@@ -167,16 +184,16 @@ export default function PositionManagement() {
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label required">ระดับ</label>
+                  <label className="form-label required">ระดับตำแหน่ง</label>
                   <select
                     className="form-select"
                     value={formData.level}
                     onChange={e => setFormData({...formData, level: e.target.value})}
                     required
                   >
-                    <option value="บริหาร">บริหาร</option>
-                    <option value="ปฏิบัติการ">ปฏิบัติการ</option>
-                    <option value="ฝึกงาน">ฝึกงาน</option>
+                    {levels.map(level => (
+                      <option key={level} value={level}>{level}</option>
+                    ))}
                   </select>
                 </div>
               </div>

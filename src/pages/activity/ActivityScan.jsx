@@ -9,19 +9,36 @@ export default function ActivityScan() {
   const [mode, setMode] = useState('select'); // 'select', 'scan', 'generate'
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [scanResult, setScanResult] = useState(null);
-  const [manualCode, setManualCode] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [recentScans, setRecentScans] = useState([]);
   const html5QrCodeRef = useRef(null);
+  const searchInputRef = useRef(null);
 
-  // Map database employees to expected format
-  const employees = dbEmployees.map(emp => ({
-    id: emp.id,
-    code: emp.employee_code,
-    name: `${emp.first_name} ${emp.last_name}`,
-    department: emp.departments?.name || '-'
-  }));
+  // Map database employees to expected format (only active employees)
+  const employees = dbEmployees
+    .filter(emp => emp.is_active !== false)
+    .map(emp => ({
+      id: emp.id,
+      code: emp.employee_code,
+      name: `${emp.first_name} ${emp.last_name}`,
+      firstName: emp.first_name,
+      lastName: emp.last_name,
+      department: emp.departments?.name || '-',
+      branch: emp.branches?.name || '-'
+    }));
+
+  // Filter employees based on search text
+  const filteredEmployees = searchText.trim() 
+    ? employees.filter(emp => 
+        emp.name.toLowerCase().includes(searchText.toLowerCase()) ||
+        emp.firstName.toLowerCase().includes(searchText.toLowerCase()) ||
+        emp.lastName.toLowerCase().includes(searchText.toLowerCase()) ||
+        emp.code.toLowerCase().includes(searchText.toLowerCase())
+      ).slice(0, 8)
+    : [];
 
   useEffect(() => {
     return () => {
@@ -29,6 +46,16 @@ export default function ActivityScan() {
         html5QrCodeRef.current.stop().catch(console.error);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchInputRef.current && !searchInputRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const startCamera = async () => {
@@ -41,12 +68,10 @@ export default function ActivityScan() {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
-          handleScanSuccess(decodedText);
+          handleQRScan(decodedText);
           html5QrCode.stop().catch(console.error);
         },
-        (errorMessage) => {
-          // Ignore scan errors
-        }
+        () => {}
       );
     } catch (err) {
       console.error('Camera error:', err);
@@ -60,50 +85,44 @@ export default function ActivityScan() {
     }
   };
 
-  const handleScanSuccess = async (code) => {
-    // Search by employee_code (case-insensitive, trim whitespace)
-    const searchCode = code.trim();
-    const employee = employees.find(e => 
-      e.code.toLowerCase() === searchCode.toLowerCase() ||
-      e.code === searchCode
-    );
-    
+  const handleQRScan = async (code) => {
+    const employee = employees.find(e => e.code.toLowerCase() === code.trim().toLowerCase());
     if (employee) {
-      setSaving(true);
-      setError('');
-      
-      // Save to database
-      const result = await recordAttendance(selectedActivity.id, employee.id, 'QR');
-      
-      setSaving(false);
-      
-      if (result.success) {
-        const scanData = {
-          ...employee,
-          activity: selectedActivity.name,
-          time: new Date().toLocaleTimeString('th-TH'),
-          date: new Date().toLocaleDateString('th-TH')
-        };
-        setScanResult(scanData);
-        setRecentScans(prev => [scanData, ...prev.slice(0, 4)]);
-      } else if (result.alreadyCheckedIn) {
-        setError('⚠️ พนักงาน ' + employee.name + ' เช็คอินไปแล้ว');
-        setScanResult(null);
-      } else {
-        setError('เกิดข้อผิดพลาด: ' + result.error);
-        setScanResult(null);
-      }
+      await recordAndShowResult(employee);
     } else {
-      setError('ไม่พบข้อมูลพนักงาน: ' + code);
+      setError('ไม่พบพนักงาน: ' + code);
       setScanResult(null);
     }
   };
 
-  const handleManualSubmit = (e) => {
-    e.preventDefault();
-    if (manualCode.trim()) {
-      handleScanSuccess(manualCode.trim());
-      setManualCode('');
+  const handleSelectEmployee = async (employee) => {
+    setSearchText('');
+    setShowDropdown(false);
+    await recordAndShowResult(employee);
+  };
+
+  const recordAndShowResult = async (employee) => {
+    setSaving(true);
+    setError('');
+    
+    const result = await recordAttendance(selectedActivity.id, employee.id, 'Manual');
+    setSaving(false);
+    
+    if (result.success) {
+      const scanData = {
+        ...employee,
+        activity: selectedActivity.name,
+        time: new Date().toLocaleTimeString('th-TH'),
+        date: new Date().toLocaleDateString('th-TH')
+      };
+      setScanResult(scanData);
+      setRecentScans(prev => [scanData, ...prev.slice(0, 9)]);
+    } else if (result.alreadyCheckedIn) {
+      setError('⚠️ ' + employee.name + ' เช็คอินไปแล้ว');
+      setScanResult(null);
+    } else {
+      setError('เกิดข้อผิดพลาด: ' + result.error);
+      setScanResult(null);
     }
   };
 
@@ -113,11 +132,13 @@ export default function ActivityScan() {
     setScanResult(null);
     setError('');
     setRecentScans([]);
+    setSearchText('');
   };
 
   const resetScan = () => {
     setScanResult(null);
     setError('');
+    setSearchText('');
   };
 
   const goBack = () => {
@@ -129,9 +150,8 @@ export default function ActivityScan() {
     setRecentScans([]);
   };
 
-  // Filter activities that are today or in the future (available for scanning)
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Reset to start of day
+  today.setHours(0, 0, 0, 0);
   
   const upcomingActivities = activities.filter(a => {
     const activityDate = new Date(a.date);
@@ -139,207 +159,435 @@ export default function ActivityScan() {
     return activityDate >= today;
   });
 
+  // Styles
+  const cardStyle = {
+    background: 'white',
+    borderRadius: '20px',
+    padding: '2rem',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+    border: '1px solid rgba(126, 184, 220, 0.2)'
+  };
+
+  const stepBadgeStyle = {
+    background: 'linear-gradient(135deg, #7eb8dc 0%, #5aa8d4 100%)',
+    color: 'white',
+    borderRadius: '50%',
+    width: '36px',
+    height: '36px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    flexShrink: 0
+  };
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">📱 สแกนเข้าร่วมกิจกรรม</h1>
-        <p className="page-subtitle">สแกน QR Code หรือกรอกรหัสพนักงานเพื่อเช็คอิน</p>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <h1 style={{ 
+          fontSize: '2rem', 
+          fontWeight: '700', 
+          color: 'var(--color-text-primary)',
+          marginBottom: '0.5rem'
+        }}>
+          📱 เช็คอินกิจกรรม
+        </h1>
+        <p style={{ color: 'var(--color-text-muted)', fontSize: '1rem' }}>
+          ระบบบันทึกการเข้าร่วมกิจกรรมของพนักงาน
+        </p>
       </div>
 
+      {/* Step 1: Select Activity */}
       {mode === 'select' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">เลือกกิจกรรม</h2>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div style={stepBadgeStyle}>1</div>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>เลือกกิจกรรม</h2>
+              <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                เลือกกิจกรรมที่ต้องการเช็คอิน
+              </p>
+            </div>
           </div>
+
           {upcomingActivities.length > 0 ? (
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
               {upcomingActivities.map(activity => (
                 <div
                   key={activity.id}
                   onClick={() => selectActivity(activity)}
                   style={{
-                    padding: '1.5rem',
-                    background: 'var(--color-bg-secondary)',
-                    borderRadius: 'var(--radius-lg)',
+                    padding: '1.25rem',
+                    background: 'linear-gradient(135deg, #f8fbff 0%, #f0f7fc 100%)',
+                    borderRadius: '12px',
                     cursor: 'pointer',
-                    border: '1px solid var(--color-border)',
-                    transition: 'all 0.2s ease'
+                    border: '2px solid transparent',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}
-                  onMouseOver={e => e.currentTarget.style.borderColor = 'var(--color-primary)'}
-                  onMouseOut={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
+                  onMouseOver={e => {
+                    e.currentTarget.style.borderColor = 'var(--color-primary)';
+                    e.currentTarget.style.transform = 'translateX(4px)';
+                  }}
+                  onMouseOut={e => {
+                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.transform = 'translateX(0)';
+                  }}
                 >
-                  <div className="font-semibold" style={{ marginBottom: '0.5rem' }}>
-                    {activity.name}
+                  <div>
+                    <div style={{ fontWeight: '600', fontSize: '1.05rem', marginBottom: '0.25rem' }}>
+                      {activity.name}
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                      📅 {new Date(activity.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {activity.location && <span> • 📍 {activity.location}</span>}
+                    </div>
                   </div>
-                  <div className="text-muted" style={{ fontSize: '0.85rem' }}>
-                    📅 {new Date(activity.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    {activity.location && <span> • 📍 {activity.location}</span>}
-                  </div>
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <span className="badge badge-info">{activity.attendees || 0} คนเข้าร่วมแล้ว</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className="badge badge-info" style={{ fontSize: '0.8rem' }}>
+                      👥 {activity.attendees || 0}
+                    </span>
+                    <span style={{ fontSize: '1.5rem', color: 'var(--color-primary)' }}>→</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">📋</div>
-              <div className="empty-state-title">ไม่มีกิจกรรมที่กำลังจะมาถึง</div>
-              <div className="empty-state-text">ไปที่หน้า "รายการกิจกรรม" เพื่อเพิ่มกิจกรรมใหม่</div>
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '3rem 1rem',
+              background: '#f8f9fa',
+              borderRadius: '12px'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>�</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+                ไม่มีกิจกรรมที่กำลังจะมาถึง
+              </div>
+              <div style={{ color: 'var(--color-text-muted)' }}>
+                สร้างกิจกรรมใหม่ได้ที่เมนู "รายการกิจกรรม"
+              </div>
             </div>
           )}
 
-          <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+          <div style={{ 
+            marginTop: '1.5rem', 
+            paddingTop: '1.5rem', 
+            borderTop: '1px dashed var(--color-border)'
+          }}>
             <button 
-              className="btn btn-secondary btn-lg"
+              className="btn btn-secondary"
               onClick={() => setMode('generate')}
-              style={{ width: '100%' }}
+              style={{ width: '100%', padding: '1rem' }}
             >
-              🔲 สร้าง QR Code สำหรับพนักงาน
+              🔲 สร้าง QR Code ให้พนักงาน
             </button>
           </div>
         </div>
       )}
 
+      {/* QR Code Generator */}
       {mode === 'generate' && (
-        <div className="card">
-          <div className="card-header">
-            <h2 className="card-title">🔲 สร้าง QR Code พนักงาน</h2>
+        <div style={cardStyle}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>🔲 QR Code พนักงาน</h2>
             <button className="btn btn-secondary btn-sm" onClick={() => setMode('select')}>
               ← กลับ
             </button>
           </div>
+          
+          <p style={{ color: 'var(--color-text-muted)', marginBottom: '1.5rem' }}>
+            พิมพ์ QR Code แจกพนักงาน เพื่อใช้สแกนเข้าร่วมกิจกรรม
+          </p>
+
           {employees.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-              {employees.map(employee => (
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+              gap: '1rem' 
+            }}>
+              {employees.map(emp => (
                 <div
-                  key={employee.id}
+                  key={emp.id}
                   style={{
-                    padding: '1.5rem',
-                    background: 'var(--color-bg-secondary)',
-                    borderRadius: 'var(--radius-lg)',
-                    textAlign: 'center'
+                    padding: '1rem',
+                    background: '#fafbfc',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                    border: '1px solid var(--color-border)'
                   }}
                 >
                   <QRCodeSVG
-                    value={employee.code}
-                    size={150}
+                    value={emp.code}
+                    size={120}
                     bgColor="transparent"
-                    fgColor="var(--color-text-primary)"
+                    fgColor="#333"
                     level="M"
-                    style={{ marginBottom: '1rem' }}
+                    style={{ marginBottom: '0.75rem' }}
                   />
-                  <div className="font-semibold">{employee.name}</div>
-                  <div className="text-muted" style={{ fontSize: '0.85rem' }}>{employee.code}</div>
-                  <div className="badge badge-info" style={{ marginTop: '0.5rem' }}>{employee.department}</div>
+                  <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{emp.name}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                    {emp.code} • {emp.branch}
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="empty-state">
-              <div className="empty-state-icon">👥</div>
-              <div className="empty-state-title">ไม่มีข้อมูลพนักงาน</div>
-              <div className="empty-state-text">ไปที่หน้า "พนักงาน" เพื่อเพิ่มพนักงานใหม่</div>
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+              ไม่มีข้อมูลพนักงาน
             </div>
           )}
         </div>
       )}
 
+      {/* Step 2: Scan / Search */}
       {mode === 'scan' && selectedActivity && (
-        <div className="card">
-          <div className="card-header">
+        <div>
+          {/* Activity Info Bar */}
+          <div style={{
+            background: 'linear-gradient(135deg, #7eb8dc 0%, #5aa8d4 100%)',
+            color: 'white',
+            padding: '1rem 1.5rem',
+            borderRadius: '16px',
+            marginBottom: '1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
             <div>
-              <h2 className="card-title">{selectedActivity.name}</h2>
-              <div className="card-subtitle">สแกน QR Code หรือกรอกรหัสพนักงาน</div>
+              <div style={{ fontWeight: '700', fontSize: '1.1rem' }}>{selectedActivity.name}</div>
+              <div style={{ opacity: 0.9, fontSize: '0.85rem' }}>
+                📅 {new Date(selectedActivity.date).toLocaleDateString('th-TH')}
+                {selectedActivity.location && ` • 📍 ${selectedActivity.location}`}
+              </div>
             </div>
-            <button className="btn btn-secondary btn-sm" onClick={goBack}>
-              ← กลับ
+            <button 
+              onClick={goBack}
+              style={{
+                background: 'rgba(255,255,255,0.2)',
+                border: 'none',
+                color: 'white',
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              ✕ เปลี่ยน
             </button>
           </div>
 
-          <div className="qr-scanner-container">
-            {/* QR Scanner Box */}
-            <div className="qr-scanner-box">
-              <div id="qr-reader" style={{ width: '100%', height: '100%' }}></div>
+          {/* Main Scan Area */}
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div style={stepBadgeStyle}>2</div>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>เช็คอินพนักงาน</h2>
+                <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                  ค้นหาชื่อ หรือ สแกน QR Code
+                </p>
+              </div>
+            </div>
+
+            {/* Search Box - Primary Method */}
+            <div style={{ marginBottom: '1.5rem', position: 'relative' }} ref={searchInputRef}>
+              <div style={{
+                background: 'linear-gradient(135deg, #f8fbff 0%, #eef6fc 100%)',
+                borderRadius: '16px',
+                padding: '1.5rem',
+                border: '2px solid var(--color-primary-light)'
+              }}>
+                <label style={{ 
+                  display: 'block', 
+                  fontWeight: '600', 
+                  marginBottom: '0.75rem',
+                  fontSize: '1rem'
+                }}>
+                  🔍 พิมพ์ชื่อพนักงาน
+                </label>
+                <input
+                  type="text"
+                  placeholder="ค้นหา: ชื่อ, นามสกุล หรือ รหัสพนักงาน..."
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    setShowDropdown(e.target.value.trim().length > 0);
+                  }}
+                  onFocus={() => searchText.trim() && setShowDropdown(true)}
+                  disabled={saving}
+                  autoComplete="off"
+                  style={{
+                    width: '100%',
+                    padding: '1rem 1.25rem',
+                    fontSize: '1.1rem',
+                    border: '2px solid var(--color-border)',
+                    borderRadius: '12px',
+                    outline: 'none',
+                    transition: 'border-color 0.2s'
+                  }}
+                />
+
+                {/* Dropdown */}
+                {showDropdown && filteredEmployees.length > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    left: '1.5rem',
+                    right: '1.5rem',
+                    top: 'calc(100% - 0.5rem)',
+                    background: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                    zIndex: 100,
+                    maxHeight: '280px',
+                    overflowY: 'auto'
+                  }}>
+                    {filteredEmployees.map((emp, idx) => (
+                      <div
+                        key={emp.id}
+                        onClick={() => handleSelectEmployee(emp)}
+                        style={{
+                          padding: '1rem 1.25rem',
+                          cursor: 'pointer',
+                          borderBottom: idx < filteredEmployees.length - 1 ? '1px solid #eee' : 'none',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f5f9fc'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'white'}
+                      >
+                        <div>
+                          <div style={{ fontWeight: '600' }}>{emp.name}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#888' }}>
+                            {emp.department} • {emp.branch}
+                          </div>
+                        </div>
+                        <span style={{ 
+                          background: 'var(--color-primary)', 
+                          color: 'white',
+                          padding: '0.35rem 0.75rem',
+                          borderRadius: '20px',
+                          fontSize: '0.8rem',
+                          fontWeight: '500'
+                        }}>
+                          เช็คอิน
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {showDropdown && searchText.trim() && filteredEmployees.length === 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    left: '1.5rem',
+                    right: '1.5rem',
+                    top: 'calc(100% - 0.5rem)',
+                    background: 'white',
+                    borderRadius: '12px',
+                    boxShadow: '0 8px 30px rgba(0,0,0,0.15)',
+                    padding: '1rem',
+                    textAlign: 'center',
+                    color: '#888',
+                    zIndex: 100
+                  }}>
+                    ❌ ไม่พบพนักงาน "{searchText}"
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* QR Scanner - Secondary Method */}
+            <div style={{
+              background: '#fafbfc',
+              borderRadius: '16px',
+              padding: '1.5rem',
+              border: '1px dashed var(--color-border)',
+              textAlign: 'center'
+            }}>
+              <div style={{ fontSize: '0.9rem', color: '#888', marginBottom: '1rem' }}>
+                หรือ สแกน QR Code
+              </div>
+              <div id="qr-reader" style={{ 
+                width: '100%', 
+                maxWidth: '280px', 
+                margin: '0 auto',
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}></div>
               {!html5QrCodeRef.current && (
-                <div className="qr-scanner-overlay">
-                  <button className="btn btn-primary btn-lg" onClick={startCamera}>
-                    📷 เปิดกล้อง
-                  </button>
-                </div>
+                <button className="btn btn-secondary" onClick={startCamera}>
+                  📷 เปิดกล้อง
+                </button>
               )}
             </div>
 
-            {/* Manual Input */}
-            <div style={{ width: '100%', maxWidth: '400px' }}>
-              <form onSubmit={handleManualSubmit} className="flex gap-md">
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="กรอกรหัสพนักงาน"
-                  value={manualCode}
-                  onChange={(e) => setManualCode(e.target.value)}
-                  style={{ flex: 1 }}
-                  disabled={saving}
-                />
-                <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? '⏳' : '✓'} เช็คอิน
-                </button>
-              </form>
-            </div>
-
-            {/* Saving Indicator */}
+            {/* Status Messages */}
             {saving && (
               <div style={{
+                marginTop: '1.5rem',
                 padding: '1rem',
                 background: 'rgba(74, 144, 226, 0.1)',
-                borderRadius: 'var(--radius-md)',
+                borderRadius: '12px',
+                textAlign: 'center',
                 color: 'var(--color-primary)',
-                width: '100%',
-                maxWidth: '400px',
-                textAlign: 'center'
+                fontWeight: '500'
               }}>
-                กำลังบันทึก...
+                ⏳ กำลังบันทึก...
               </div>
             )}
 
-            {/* Error Message */}
             {error && !saving && (
               <div style={{
+                marginTop: '1.5rem',
                 padding: '1rem',
-                background: 'rgba(184, 84, 80, 0.1)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--color-error)',
-                width: '100%',
-                maxWidth: '400px',
-                textAlign: 'center'
+                background: 'rgba(220, 53, 69, 0.1)',
+                borderRadius: '12px',
+                textAlign: 'center',
+                color: '#dc3545',
+                fontWeight: '500'
               }}>
                 {error}
               </div>
             )}
 
-            {/* Scan Result */}
+            {/* Success Result */}
             {scanResult && !saving && (
-              <div className="scan-result scan-result-success">
-                <div className="scan-result-icon">✅</div>
-                <div className="scan-result-title">เช็คอินสำเร็จ!</div>
-                <div className="scan-result-info">
-                  <div style={{ fontSize: '1.1rem', fontWeight: '600', marginTop: '0.5rem' }}>
-                    {scanResult.name}
-                  </div>
-                  <div>รหัส: {scanResult.code}</div>
-                  <div>แผนก: {scanResult.department}</div>
-                  <div style={{ marginTop: '0.5rem', color: 'var(--color-text-muted)' }}>
-                    🕐 {scanResult.time}
-                  </div>
+              <div style={{
+                marginTop: '1.5rem',
+                padding: '1.5rem',
+                background: 'linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%)',
+                borderRadius: '16px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>✅</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: '700', color: '#155724' }}>
+                  เช็คอินสำเร็จ!
+                </div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '600', marginTop: '0.5rem' }}>
+                  {scanResult.name}
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.25rem' }}>
+                  {scanResult.department} • {scanResult.branch}
+                </div>
+                <div style={{ fontSize: '0.85rem', color: '#888', marginTop: '0.5rem' }}>
+                  🕐 {scanResult.time}
                 </div>
                 <button 
-                  className="btn btn-secondary" 
+                  className="btn btn-primary" 
                   style={{ marginTop: '1rem' }}
                   onClick={resetScan}
                 >
-                  สแกนต่อไป
+                  ✓ เช็คอินคนต่อไป
                 </button>
               </div>
             )}
@@ -347,29 +595,29 @@ export default function ActivityScan() {
 
           {/* Recent Scans */}
           {recentScans.length > 0 && (
-            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
-              <h3 style={{ marginBottom: '1rem' }}>📋 เช็คอินล่าสุด</h3>
-              <div className="table-container">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>รหัส</th>
-                      <th>ชื่อ</th>
-                      <th>แผนก</th>
-                      <th>เวลา</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentScans.map((scan, index) => (
-                      <tr key={index}>
-                        <td><span className="badge badge-info">{scan.code}</span></td>
-                        <td>{scan.name}</td>
-                        <td>{scan.department}</td>
-                        <td>{scan.time}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div style={{ ...cardStyle, marginTop: '1rem' }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>
+                📋 เช็คอินแล้ว ({recentScans.length} คน)
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {recentScans.map((scan, idx) => (
+                  <div key={idx} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '0.75rem 1rem',
+                    background: '#f8f9fa',
+                    borderRadius: '8px'
+                  }}>
+                    <div>
+                      <span style={{ fontWeight: '500' }}>{scan.name}</span>
+                      <span style={{ color: '#888', fontSize: '0.85rem', marginLeft: '0.5rem' }}>
+                        ({scan.branch})
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.85rem', color: '#888' }}>{scan.time}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

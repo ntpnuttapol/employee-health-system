@@ -153,10 +153,13 @@ export default function ActivityScan() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
+  // กรองเฉพาะกิจกรรมที่ยังไม่เสร็จสิ้น และวันที่ >= วันนี้
   const upcomingActivities = activities.filter(a => {
     const activityDate = new Date(a.date);
     activityDate.setHours(0, 0, 0, 0);
-    return activityDate >= today;
+    const isNotCompleted = a.status !== 'เสร็จสิ้น';
+    const isNotPast = activityDate >= today;
+    return isNotCompleted && isNotPast;
   });
 
   // Styles

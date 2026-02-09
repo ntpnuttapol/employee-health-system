@@ -9,19 +9,32 @@ import { formatDateTimeForPDF } from '../../utils/pdfUtils';
 
 export default function HealthRecords() {
   const { healthRecords, loading } = useHealth();
-  const { departments } = useMasterData();
+  const { departments, branches } = useMasterData();
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
+  const [branchFilter, setBranchFilter] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const filteredRecords = healthRecords.filter(record => {
-    const matchesSearch = 
+    // Search by name or employee code
+    const matchesSearch = !searchTerm || 
       record.employees?.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.employees?.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       record.employees?.employee_code?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesDept = departmentFilter ? record.employees?.departments?.name === departmentFilter : true;
+    // Filter by department
+    const matchesDept = !departmentFilter || record.employees?.departments?.name === departmentFilter;
+    
+    // Filter by branch
+    const matchesBranch = !branchFilter || record.employees?.branch_id === parseInt(branchFilter);
+    
+    // Filter by date range
+    const recordDate = record.recorded_at ? new Date(record.recorded_at) : null;
+    const matchesStartDate = !startDate || (recordDate && recordDate >= new Date(startDate));
+    const matchesEndDate = !endDate || (recordDate && recordDate <= new Date(endDate + 'T23:59:59'));
 
-    return matchesSearch && matchesDept;
+    return matchesSearch && matchesDept && matchesBranch && matchesStartDate && matchesEndDate;
   });
 
   const formatDate = (dateString) => {
@@ -174,8 +187,60 @@ export default function HealthRecords() {
       </div>
 
       <div className="card">
-        {/* Filters */}
-        <div className="flex gap-md" style={{ marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        {/* Filters - Row 1: Branch and Date Range */}
+        <div className="flex gap-md" style={{ marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="form-group" style={{ flex: 1, minWidth: '180px', marginBottom: 0 }}>
+            <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.8rem' }}>🏢 สาขา</label>
+            <select
+              className="form-select"
+              value={branchFilter}
+              onChange={(e) => setBranchFilter(e.target.value)}
+            >
+              <option value="">ทุกสาขา</option>
+              {(branches || []).map(branch => (
+                <option key={branch.id} value={branch.id}>{branch.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="form-group" style={{ flex: 1, minWidth: '180px', marginBottom: 0 }}>
+            <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.8rem' }}>🏛️ แผนก</label>
+            <select
+              className="form-select"
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+            >
+              <option value="">ทุกแผนก</option>
+              {departments.map(dept => (
+                <option key={dept.id} value={dept.name}>{dept.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ minWidth: '140px', marginBottom: 0 }}>
+            <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.8rem' }}>📅 ตั้งแต่</label>
+            <input
+              type="date"
+              className="form-input"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+
+          <div className="form-group" style={{ minWidth: '140px', marginBottom: 0 }}>
+            <label className="form-label" style={{ marginBottom: '0.25rem', fontSize: '0.8rem' }}>📅 ถึง</label>
+            <input
+              type="date"
+              className="form-input"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
+            />
+          </div>
+        </div>
+
+        {/* Filters - Row 2: Search and Clear */}
+        <div className="flex gap-md" style={{ marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <div className="search-input-wrapper" style={{ flex: 1, minWidth: '250px' }}>
             <span className="search-icon">🔍</span>
             <input
@@ -186,17 +251,21 @@ export default function HealthRecords() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <select
-            className="form-select"
-            style={{ width: 'auto', minWidth: '200px' }}
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-          >
-            <option value="">ทุกแผนก</option>
-            {departments.map(dept => (
-              <option key={dept.id} value={dept.name}>{dept.name}</option>
-            ))}
-          </select>
+          {(branchFilter || departmentFilter || startDate || endDate || searchTerm) && (
+            <button 
+              className="btn btn-secondary"
+              onClick={() => {
+                setBranchFilter('');
+                setDepartmentFilter('');
+                setStartDate('');
+                setEndDate('');
+                setSearchTerm('');
+              }}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              🗑️ ล้างตัวกรอง
+            </button>
+          )}
         </div>
 
         {/* Stats Summary (Calculated from filtered records) */}

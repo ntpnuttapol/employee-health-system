@@ -165,8 +165,19 @@ export default function HealthDashboard() {
     return { riskScore, risks };
   };
 
-  // At-risk employees (sorted by risk score descending)
+  // Get today's date for filtering
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  // At-risk employees - TODAY ONLY (reset each day)
   const atRiskEmployees = healthData
+    .filter(record => {
+      // Only include today's records
+      const recordDate = new Date(record.recorded_at);
+      return recordDate >= todayStart && recordDate <= todayEnd;
+    })
     .map(record => {
       const { riskScore, risks } = getRiskLevel(record);
       return {
@@ -329,27 +340,80 @@ export default function HealthDashboard() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
-        <div className="stat-card">
-          <div className="stat-icon">📋</div>
-          <div className="stat-value">{stats.totalRecords}</div>
-          <div className="stat-label">บันทึกทั้งหมด</div>
+      {/* Stats Cards - Smooth Design */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+        gap: '1rem', 
+        marginBottom: '1.5rem' 
+      }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8fbff 100%)',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          boxShadow: '0 4px 15px rgba(126, 184, 220, 0.1)',
+          border: '1px solid rgba(126, 184, 220, 0.15)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', opacity: 0.8 }}>📋</div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#2c5282' }}>{stats.totalRecords}</div>
+            <div style={{ fontSize: '0.85rem', color: '#718096' }}>บันทึกทั้งหมด</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">💓</div>
-          <div className="stat-value">{stats.avgSystolic}/{stats.avgDiastolic}</div>
-          <div className="stat-label">ความดันเฉลี่ย</div>
+        <div style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #fff5f5 100%)',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          boxShadow: '0 4px 15px rgba(245, 101, 101, 0.1)',
+          border: '1px solid rgba(245, 101, 101, 0.15)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', opacity: 0.8 }}>💓</div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#c53030' }}>{stats.avgSystolic}/{stats.avgDiastolic}</div>
+            <div style={{ fontSize: '0.85rem', color: '#718096' }}>ความดันเฉลี่ย</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">❤️</div>
-          <div className="stat-value">{stats.avgHeartRate}</div>
-          <div className="stat-label">ชีพจรเฉลี่ย</div>
+        <div style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #fff0f3 100%)',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          boxShadow: '0 4px 15px rgba(237, 100, 166, 0.1)',
+          border: '1px solid rgba(237, 100, 166, 0.15)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', opacity: 0.8 }}>❤️</div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#d53f8c' }}>{stats.avgHeartRate}</div>
+            <div style={{ fontSize: '0.85rem', color: '#718096' }}>ชีพจรเฉลี่ย</div>
+          </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon">🩸</div>
-          <div className="stat-value">{stats.avgBloodSugar}</div>
-          <div className="stat-label">น้ำตาลเฉลี่ย</div>
+        <div style={{
+          background: 'linear-gradient(135deg, #ffffff 0%, #fef5f5 100%)',
+          borderRadius: '16px',
+          padding: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          boxShadow: '0 4px 15px rgba(229, 62, 62, 0.1)',
+          border: '1px solid rgba(229, 62, 62, 0.15)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+        }}>
+          <div style={{ fontSize: '2rem', opacity: 0.8 }}>🩸</div>
+          <div>
+            <div style={{ fontSize: '1.75rem', fontWeight: '700', color: '#e53e3e' }}>{stats.avgBloodSugar}</div>
+            <div style={{ fontSize: '0.85rem', color: '#718096' }}>น้ำตาลเฉลี่ย</div>
+          </div>
         </div>
       </div>
 
@@ -363,11 +427,14 @@ export default function HealthDashboard() {
         </div>
       ) : (
         <>
-          {/* At-Risk Employees - Most Dangerous First */}
+          {/* At-Risk Employees - TODAY ONLY */}
           {atRiskEmployees.length > 0 && (
-            <div className="card" style={{ marginBottom: '1.5rem', border: '2px solid #ff6b6b' }}>
-              <div className="card-header" style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)', color: 'white', margin: '-1rem -1rem 1rem -1rem', padding: '1rem', borderRadius: '8px 8px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 className="card-title" style={{ color: 'white', margin: 0 }}>⚠️ พนักงานกลุ่มเสี่ยง ({atRiskEmployees.length} คน)</h2>
+            <div className="card" style={{ marginBottom: '1.5rem', border: '2px solid #ff6b6b', borderRadius: '16px', overflow: 'hidden' }}>
+              <div className="card-header" style={{ background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)', color: 'white', margin: '-1rem -1rem 1rem -1rem', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2 className="card-title" style={{ color: 'white', margin: 0, fontSize: '1.1rem' }}>⚠️ พนักงานกลุ่มเสี่ยงวันนี้ ({atRiskEmployees.length} คน)</h2>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.25rem' }}>📅 {new Date().toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button onClick={exportToExcel} className="btn btn-sm" style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.5)' }}>
                     📊 Excel

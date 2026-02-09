@@ -170,8 +170,16 @@ export function MasterDataProvider({ children }) {
     return { success: !error, error };
   };
 
-  const deleteEmployee = async (id) => {
-    const { error } = await supabase.from('employees').delete().eq('id', id);
+  const deactivateEmployee = async (id) => {
+    const { error } = await supabase.from('employees').update({ is_active: false }).eq('id', id);
+    if (!error) {
+      await fetchData();
+    }
+    return { success: !error, error };
+  };
+
+  const activateEmployee = async (id) => {
+    const { error } = await supabase.from('employees').update({ is_active: true }).eq('id', id);
     if (!error) {
       await fetchData();
     }
@@ -184,7 +192,7 @@ export function MasterDataProvider({ children }) {
       addBranch, updateBranch, deleteBranch,
       addDepartment, updateDepartment, deleteDepartment,
       addPosition, updatePosition, deletePosition,
-      addEmployee, updateEmployee, deleteEmployee
+      addEmployee, updateEmployee, deactivateEmployee, activateEmployee
     }}>
       {children}
     </MasterDataContext.Provider>

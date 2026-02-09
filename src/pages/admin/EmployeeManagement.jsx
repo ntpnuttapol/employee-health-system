@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 
 export default function EmployeeManagement() {
-  const { employees, branches, departments, positions, loading, addEmployee, updateEmployee, deleteEmployee } = useMasterData();
+  const { employees, branches, departments, positions, loading, addEmployee, updateEmployee, deactivateEmployee, activateEmployee } = useMasterData();
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [formData, setFormData] = useState({
     id: null, code: '', firstName: '', lastName: '', email: '', phone: '',
     branchId: '', departmentId: '', positionId: ''
@@ -13,11 +14,17 @@ export default function EmployeeManagement() {
   const [isEditing, setIsEditing] = useState(false);
 
   // Filter employees
-  const filteredEmployees = employees.filter(emp =>
-    emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Filter by active status (default: show only active)
+    const isActive = emp.is_active !== false; // treat null/undefined as active
+    const matchesStatus = showInactive ? true : isActive;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   const handleOpenAdd = () => {
     setFormData({
@@ -68,11 +75,17 @@ export default function EmployeeManagement() {
     }
   };
 
-  const handleDelete = async (emp) => {
-    if (window.confirm(`ยืนยันลบพนักงาน "${emp.first_name} ${emp.last_name}"?`)) {
-      const result = await deleteEmployee(emp.id);
+  const handleToggleActive = async (emp) => {
+    const isCurrentlyActive = emp.is_active !== false;
+    const action = isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+    
+    if (window.confirm(`ยืนยัน${action}พนักงาน "${emp.first_name} ${emp.last_name}"?`)) {
+      const result = isCurrentlyActive 
+        ? await deactivateEmployee(emp.id)
+        : await activateEmployee(emp.id);
+        
       if (!result.success) {
-        alert('Error deleting employee: ' + result.error.message);
+        alert('Error: ' + result.error.message);
       }
     }
   };
@@ -89,8 +102,8 @@ export default function EmployeeManagement() {
       </div>
 
       <div className="card">
-        <div className="search-bar">
-          <div className="search-input-wrapper">
+        <div className="search-bar" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="search-input-wrapper" style={{ flex: 1, minWidth: '250px' }}>
             <span className="search-icon">🔍</span>
             <input
               type="text"
@@ -100,6 +113,14 @@ export default function EmployeeManagement() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+            />
+            แสดงพนักงานที่ปิดใช้งาน
+          </label>
         </div>
 
         <div className="table-container">
@@ -110,7 +131,7 @@ export default function EmployeeManagement() {
                 <th>ชื่อ-นามสกุล</th>
                 <th>ตำแหน่ง/แผนก</th>
                 <th>สาขา</th>
-                <th>เบอร์โทร/อีเมล</th>
+                <th>สถานะ</th>
                 <th>จัดการ</th>
               </tr>
             </thead>
@@ -118,39 +139,47 @@ export default function EmployeeManagement() {
               {loading ? (
                 <tr><td colSpan="6" className="text-center">กำลังโหลดข้อมูล...</td></tr>
               ) : filteredEmployees.length > 0 ? (
-                filteredEmployees.map((emp) => (
-                  <tr key={emp.id}>
-                    <td><span className="badge badge-secondary">{emp.employee_code}</span></td>
-                    <td>
-                      <div className="font-medium">{emp.first_name} {emp.last_name}</div>
-                    </td>
-                    <td>
-                      <div className="text-sm">{emp.positions?.name}</div>
-                      <div className="text-muted text-xs">{emp.departments?.name}</div>
-                    </td>
-                    <td>{emp.branches?.name}</td>
-                    <td>
-                      <div className="text-sm">{emp.phone}</div>
-                      <div className="text-muted text-xs">{emp.email}</div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
-                          className="btn btn-sm btn-secondary"
-                          onClick={() => handleOpenEdit(emp)}
+                filteredEmployees.map((emp) => {
+                  const isActive = emp.is_active !== false;
+                  return (
+                    <tr key={emp.id} style={{ opacity: isActive ? 1 : 0.6 }}>
+                      <td><span className="badge badge-secondary">{emp.employee_code}</span></td>
+                      <td>
+                        <div className="font-medium">{emp.first_name} {emp.last_name}</div>
+                      </td>
+                      <td>
+                        <div className="text-sm">{emp.positions?.name}</div>
+                        <div className="text-muted text-xs">{emp.departments?.name}</div>
+                      </td>
+                      <td>{emp.branches?.name}</td>
+                      <td>
+                        <span 
+                          className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => handleToggleActive(emp)}
                         >
-                          ✏️ แก้ไข
-                        </button>
-                        <button 
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(emp)}
-                        >
-                          🗑️ ลบ
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                          {isActive ? '✓ เปิดใช้งาน' : '✗ ปิดใช้งาน'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn btn-sm btn-secondary"
+                            onClick={() => handleOpenEdit(emp)}
+                          >
+                            ✏️ แก้ไข
+                          </button>
+                          <button 
+                            className={`btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}`}
+                            onClick={() => handleToggleActive(emp)}
+                          >
+                            {isActive ? '🚫 ปิด' : '✓ เปิด'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan="6">

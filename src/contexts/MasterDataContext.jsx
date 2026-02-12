@@ -84,6 +84,13 @@ export function MasterDataProvider({ children }) {
 
   // ============ DEPARTMENTS ============
   const addDepartment = async (name, branchId) => {
+    // เช็คชื่อซ้ำก่อนเพิ่ม
+    const exists = departments.some(
+      d => d.name.trim().toLowerCase() === name.trim().toLowerCase() && String(d.branch_id) === String(branchId) && d.is_active !== false
+    );
+    if (exists) {
+      return { success: false, error: { message: `แผนก "${name}" มีอยู่แล้วในสาขานี้` } };
+    }
     const { error } = await supabase.from('departments').insert([{ name, branch_id: branchId }]);
     if (!error) await fetchData();
     return { success: !error, error };
@@ -134,6 +141,23 @@ export function MasterDataProvider({ children }) {
 
   // ============ EMPLOYEES ============
   const addEmployee = async (employeeData) => {
+    // เช็ครหัสพนักงานซ้ำ
+    const codeExists = employees.some(
+      e => e.employee_code?.trim().toLowerCase() === employeeData.code?.trim().toLowerCase() && e.is_active !== false
+    );
+    if (codeExists) {
+      return { success: false, error: { message: `รหัสพนักงาน "${employeeData.code}" มีอยู่แล้ว` } };
+    }
+    // เช็คชื่อ-นามสกุลซ้ำในสาขาเดียวกัน
+    const nameExists = employees.some(
+      e => e.first_name?.trim().toLowerCase() === employeeData.firstName?.trim().toLowerCase()
+        && e.last_name?.trim().toLowerCase() === employeeData.lastName?.trim().toLowerCase()
+        && String(e.branch_id) === String(employeeData.branchId)
+        && e.is_active !== false
+    );
+    if (nameExists) {
+      return { success: false, error: { message: `พนักงาน "${employeeData.firstName} ${employeeData.lastName}" มีอยู่แล้วในสาขานี้` } };
+    }
     const dbData = {
       employee_code: employeeData.code,
       first_name: employeeData.firstName,

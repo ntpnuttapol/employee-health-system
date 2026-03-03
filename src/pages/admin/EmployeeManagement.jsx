@@ -6,6 +6,7 @@ export default function EmployeeManagement() {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+  const [filterBranchId, setFilterBranchId] = useState('');
   const [formData, setFormData] = useState({
     id: null, code: '', firstName: '', lastName: '', email: '', phone: '',
     branchId: '', departmentId: '', positionId: ''
@@ -18,12 +19,15 @@ export default function EmployeeManagement() {
     const matchesSearch = emp.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.employee_code.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     // Filter by active status (default: show only active)
     const isActive = emp.is_active !== false; // treat null/undefined as active
     const matchesStatus = showInactive ? true : isActive;
-    
-    return matchesSearch && matchesStatus;
+
+    // Filter by branch
+    const matchesBranch = filterBranchId ? String(emp.branch_id) === String(filterBranchId) : true;
+
+    return matchesSearch && matchesStatus && matchesBranch;
   });
 
   const handleOpenAdd = () => {
@@ -54,14 +58,14 @@ export default function EmployeeManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    
+
     let result;
     if (isEditing) {
       result = await updateEmployee(formData.id, formData);
     } else {
       result = await addEmployee(formData);
     }
-    
+
     setSubmitting(false);
 
     if (result.success) {
@@ -78,12 +82,12 @@ export default function EmployeeManagement() {
   const handleToggleActive = async (emp) => {
     const isCurrentlyActive = emp.is_active !== false;
     const action = isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
-    
+
     if (window.confirm(`ยืนยัน${action}พนักงาน "${emp.first_name} ${emp.last_name}"?`)) {
-      const result = isCurrentlyActive 
+      const result = isCurrentlyActive
         ? await deactivateEmployee(emp.id)
         : await activateEmployee(emp.id);
-        
+
       if (!result.success) {
         alert('Error: ' + result.error.message);
       }
@@ -112,6 +116,19 @@ export default function EmployeeManagement() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <select
+              className="form-select"
+              value={filterBranchId}
+              onChange={(e) => setFilterBranchId(e.target.value)}
+              style={{ minWidth: '180px' }}
+            >
+              <option value="">-- ทุกสาขา --</option>
+              {branches.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
           </div>
           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
             <input
@@ -153,7 +170,7 @@ export default function EmployeeManagement() {
                       </td>
                       <td>{emp.branches?.name}</td>
                       <td>
-                        <span 
+                        <span
                           className={`badge ${isActive ? 'badge-success' : 'badge-danger'}`}
                           style={{ cursor: 'pointer' }}
                           onClick={() => handleToggleActive(emp)}
@@ -163,13 +180,13 @@ export default function EmployeeManagement() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button 
+                          <button
                             className="btn btn-sm btn-secondary"
                             onClick={() => handleOpenEdit(emp)}
                           >
                             ✏️ แก้ไข
                           </button>
-                          <button 
+                          <button
                             className={`btn btn-sm ${isActive ? 'btn-danger' : 'btn-primary'}`}
                             onClick={() => handleToggleActive(emp)}
                           >
@@ -212,7 +229,7 @@ export default function EmployeeManagement() {
                       type="text"
                       className="form-input"
                       value={formData.code}
-                      onChange={e => setFormData({...formData, code: e.target.value})}
+                      onChange={e => setFormData({ ...formData, code: e.target.value })}
                       required
                     />
                   </div>
@@ -222,7 +239,7 @@ export default function EmployeeManagement() {
                       type="text"
                       className="form-input"
                       value={formData.phone}
-                      onChange={e => setFormData({...formData, phone: e.target.value})}
+                      onChange={e => setFormData({ ...formData, phone: e.target.value })}
                       required
                     />
                   </div>
@@ -235,7 +252,7 @@ export default function EmployeeManagement() {
                       type="text"
                       className="form-input"
                       value={formData.firstName}
-                      onChange={e => setFormData({...formData, firstName: e.target.value})}
+                      onChange={e => setFormData({ ...formData, firstName: e.target.value })}
                       required
                     />
                   </div>
@@ -245,7 +262,7 @@ export default function EmployeeManagement() {
                       type="text"
                       className="form-input"
                       value={formData.lastName}
-                      onChange={e => setFormData({...formData, lastName: e.target.value})}
+                      onChange={e => setFormData({ ...formData, lastName: e.target.value })}
                       required
                     />
                   </div>
@@ -257,7 +274,7 @@ export default function EmployeeManagement() {
                     type="email"
                     className="form-input"
                     value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
+                    onChange={e => setFormData({ ...formData, email: e.target.value })}
                   />
                 </div>
 
@@ -267,7 +284,7 @@ export default function EmployeeManagement() {
                     <select
                       className="form-select"
                       value={formData.branchId}
-                      onChange={e => setFormData({...formData, branchId: e.target.value})}
+                      onChange={e => setFormData({ ...formData, branchId: e.target.value })}
                       required
                     >
                       <option value="">-- เลือกสาขา --</option>
@@ -281,7 +298,7 @@ export default function EmployeeManagement() {
                     <select
                       className="form-select"
                       value={formData.departmentId}
-                      onChange={e => setFormData({...formData, departmentId: e.target.value})}
+                      onChange={e => setFormData({ ...formData, departmentId: e.target.value })}
                       required
                     >
                       <option value="">-- เลือกแผนก --</option>
@@ -297,7 +314,7 @@ export default function EmployeeManagement() {
                   <select
                     className="form-select"
                     value={formData.positionId}
-                    onChange={e => setFormData({...formData, positionId: e.target.value})}
+                    onChange={e => setFormData({ ...formData, positionId: e.target.value })}
                     required
                   >
                     <option value="">-- เลือกตำแหน่ง --</option>

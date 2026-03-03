@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useMasterData } from '../../contexts/MasterDataContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function FiveSInspection() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
@@ -20,6 +21,12 @@ export default function FiveSInspection() {
   const [status, setStatus] = useState({ type: '', message: '' });
   const [monthInspections, setMonthInspections] = useState([]);
 
+  // Photo states
+  const [photos, setPhotos] = useState([]); // { file, preview }
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
+  const fileInputRef = useRef(null);
+
   const [formData, setFormData] = useState({
     department_id: '',
     inspector_department_id: '',
@@ -30,6 +37,19 @@ export default function FiveSInspection() {
     score_innovation: '',
     notes: ''
   });
+
+  const { user } = useAuth();
+
+  // Auto-fill inspector details based on logged-in user if linked to employee
+  useEffect(() => {
+    if (user && user.employees) {
+      setFormData(prev => ({
+        ...prev,
+        inspector_department_id: user.employees.department_id || '',
+        inspector_name: `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
+      }));
+    }
+  }, [user]);
 
   // กรองพนักงานตามแผนกที่เลือก
   const inspectorList = formData.inspector_department_id
@@ -67,6 +87,57 @@ export default function FiveSInspection() {
     return { label: 'ต้องปรับปรุง', color: '#ef4444', bg: '#fef2f2' };
   };
 
+  // ---- Photo Handlers ----
+  const handlePhotoSelect = (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    const remaining = 20 - photos.length;
+    if (remaining <= 0) {
+      alert('แนบรูปได้สูงสุด 20 รูป');
+      return;
+    }
+    const toAdd = files.slice(0, remaining).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+      id: `${Date.now()}-${Math.random()}`
+    }));
+    setPhotos(prev => [...prev, ...toAdd]);
+    // Reset input value so same file can be re-selected
+    e.target.value = '';
+  };
+
+  const removePhoto = (id) => {
+    setPhotos(prev => {
+      const removed = prev.find(p => p.id === id);
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter(p => p.id !== id);
+    });
+  };
+
+  const uploadPhotos = async () => {
+    if (!photos.length) return [];
+    setUploadingPhotos(true);
+    const urls = [];
+    for (const photo of photos) {
+      const ext = photo.file.name.split('.').pop();
+      const fileName = `five-s/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage
+        .from('five-s-images')
+        .upload(fileName, photo.file, { upsert: false });
+      if (!error) {
+        const { data: urlData } = supabase.storage
+          .from('five-s-images')
+          .getPublicUrl(fileName);
+        if (urlData?.publicUrl) urls.push(urlData.publicUrl);
+      } else {
+        console.error('Upload error:', error);
+      }
+    }
+    setUploadingPhotos(false);
+    return urls;
+  };
+
+  // ---- Submit ----
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -88,7 +159,7 @@ export default function FiveSInspection() {
       }
     }
 
-    // เช็คซ้ำ: คนเดียวกัน + แผนกเดียวกัน + เดือนเดียวกัน
+    // เช็คซ้ำ
     const isDuplicate = monthInspections.some(
       ins => ins.inspector_name === formData.inspector_name
         && String(ins.department_id) === String(formData.department_id)
@@ -102,6 +173,9 @@ export default function FiveSInspection() {
     setSubmitting(true);
     setStatus({ type: '', message: '' });
 
+    // อัพโหลดรูปก่อน
+    const photoUrls = await uploadPhotos();
+
     const insertData = {
       department_id: parseInt(formData.department_id),
       inspector_name: formData.inspector_name,
@@ -110,38 +184,42 @@ export default function FiveSInspection() {
       score_cleanliness: scores[1],
       score_innovation: scores[2],
       total_score: scores[0] + scores[1] + scores[2],
-      notes: formData.notes || null
+      notes: formData.notes || null,
+      photo_urls: photoUrls.length > 0 ? photoUrls : null
     };
 
-    console.log('5S Insert data:', insertData);
     const { data, error } = await supabase.from('five_s_inspections').insert([insertData]).select();
-    console.log('5S Insert result:', { data, error });
 
     if (!error) {
-      setStatus({ type: 'success', message: 'บันทึกผลการตรวจ 5ส เรียบร้อยแล้ว' });
-      // อัพเดทข้อมูลเดือนหลังบันทึกสำเร็จ
+      setStatus({ type: 'success', message: `บันทึกผลการตรวจ 5ส เรียบร้อยแล้ว${photoUrls.length > 0 ? ` (แนบรูป ${photoUrls.length} รูป)` : ''}` });
       setMonthInspections(prev => [...prev, {
         id: data?.[0]?.id,
         department_id: insertData.department_id,
         inspector_name: insertData.inspector_name,
         departments: { name: filteredDepartments.find(d => d.id === insertData.department_id)?.name }
       }]);
+      // Reset form
       setFormData({
         department_id: '',
-        inspector_department_id: '',
-        inspector_name: '',
+        inspector_department_id: user?.employees?.department_id || '',
+        inspector_name: user?.employees ? `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim() : '',
         inspection_date: formData.inspection_date,
         score_improvement: '',
         score_cleanliness: '',
         score_innovation: '',
         notes: ''
       });
+      // Clear photos
+      photos.forEach(p => URL.revokeObjectURL(p.preview));
+      setPhotos([]);
       window.scrollTo(0, 0);
     } else {
       setStatus({ type: 'error', message: 'เกิดข้อผิดพลาด: ' + error.message });
     }
     setSubmitting(false);
   };
+
+  const rank = getRankLabel(totalScore);
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -160,6 +238,7 @@ export default function FiveSInspection() {
       <div className="card" style={{ marginBottom: '2rem' }}>
         <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📝 กรอกผลการตรวจ</h2>
         <form onSubmit={handleSubmit}>
+          {/* Department + Date */}
           <div className="form-section">
             <div className="form-row">
               <div className="form-group">
@@ -199,7 +278,7 @@ export default function FiveSInspection() {
                   value={formData.inspector_department_id}
                   onChange={(e) => setFormData({ ...formData, inspector_department_id: e.target.value, inspector_name: '' })}
                   required
-                  disabled={masterLoading}
+                  disabled={masterLoading || !!user?.employees?.department_id}
                 >
                   <option value="">-- เลือกแผนกผู้ตรวจ --</option>
                   {filteredDepartments
@@ -208,6 +287,9 @@ export default function FiveSInspection() {
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
                 </select>
+                {user?.employees?.department_id && formData.inspector_department_id === String(user.employees.department_id) && (
+                  <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '0.25rem' }}>✓ เลือกจากข้อมูลของคุณอัตโนมัติ</div>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label required">ชื่อผู้ตรวจ</label>
@@ -216,7 +298,7 @@ export default function FiveSInspection() {
                   value={formData.inspector_name}
                   onChange={(e) => setFormData({ ...formData, inspector_name: e.target.value })}
                   required
-                  disabled={!formData.inspector_department_id}
+                  disabled={!formData.inspector_department_id || !!user?.employees?.department_id}
                 >
                   <option value="">{formData.inspector_department_id ? '-- เลือกผู้ตรวจ --' : '-- เลือกแผนกก่อน --'}</option>
                   {inspectorList.map(emp => (
@@ -236,78 +318,81 @@ export default function FiveSInspection() {
             {/* Score 1: Improvement */}
             <div className="form-group">
               <label className="form-label required">1. การเปลี่ยนแปลงที่ดีขึ้น (Improvement)</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div className="score-row">
                 <input
                   type="range"
                   min="0"
                   max="10"
                   value={formData.score_improvement || 0}
                   onChange={(e) => setFormData({ ...formData, score_improvement: e.target.value })}
-                  style={{ flex: 1 }}
+                  className="score-range"
                 />
-                <input
-                  type="number"
-                  className="form-input"
-                  style={{ width: '80px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}
-                  value={formData.score_improvement}
-                  onChange={(e) => setFormData({ ...formData, score_improvement: e.target.value })}
-                  min="0"
-                  max="10"
-                  required
-                />
-                <span style={{ color: '#6b7280', minWidth: '30px' }}>/10</span>
+                <div className="score-number-wrap">
+                  <input
+                    type="number"
+                    className="form-input score-number-input"
+                    value={formData.score_improvement}
+                    onChange={(e) => setFormData({ ...formData, score_improvement: e.target.value })}
+                    min="0"
+                    max="10"
+                    required
+                  />
+                  <span className="score-unit">/10</span>
+                </div>
               </div>
             </div>
 
             {/* Score 2: Cleanliness */}
             <div className="form-group">
               <label className="form-label required">2. ความสะอาด (Cleanliness)</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div className="score-row">
                 <input
                   type="range"
                   min="0"
                   max="10"
                   value={formData.score_cleanliness || 0}
                   onChange={(e) => setFormData({ ...formData, score_cleanliness: e.target.value })}
-                  style={{ flex: 1 }}
+                  className="score-range"
                 />
-                <input
-                  type="number"
-                  className="form-input"
-                  style={{ width: '80px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}
-                  value={formData.score_cleanliness}
-                  onChange={(e) => setFormData({ ...formData, score_cleanliness: e.target.value })}
-                  min="0"
-                  max="10"
-                  required
-                />
-                <span style={{ color: '#6b7280', minWidth: '30px' }}>/10</span>
+                <div className="score-number-wrap">
+                  <input
+                    type="number"
+                    className="form-input score-number-input"
+                    value={formData.score_cleanliness}
+                    onChange={(e) => setFormData({ ...formData, score_cleanliness: e.target.value })}
+                    min="0"
+                    max="10"
+                    required
+                  />
+                  <span className="score-unit">/10</span>
+                </div>
               </div>
             </div>
 
             {/* Score 3: Innovation */}
             <div className="form-group">
               <label className="form-label required">3. ความท้าทายแปลกใหม่ (Innovation)</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div className="score-row">
                 <input
                   type="range"
                   min="0"
                   max="10"
                   value={formData.score_innovation || 0}
                   onChange={(e) => setFormData({ ...formData, score_innovation: e.target.value })}
-                  style={{ flex: 1 }}
+                  className="score-range"
                 />
-                <input
-                  type="number"
-                  className="form-input"
-                  style={{ width: '80px', textAlign: 'center', fontWeight: 'bold', fontSize: '1.1rem' }}
-                  value={formData.score_innovation}
-                  onChange={(e) => setFormData({ ...formData, score_innovation: e.target.value })}
-                  min="0"
-                  max="10"
-                  required
-                />
-                <span style={{ color: '#6b7280', minWidth: '30px' }}>/10</span>
+                <div className="score-number-wrap">
+                  <input
+                    type="number"
+                    className="form-input score-number-input"
+                    value={formData.score_innovation}
+                    onChange={(e) => setFormData({ ...formData, score_innovation: e.target.value })}
+                    min="0"
+                    max="10"
+                    required
+                  />
+                  <span className="score-unit">/10</span>
+                </div>
               </div>
             </div>
 
@@ -316,12 +401,12 @@ export default function FiveSInspection() {
               marginTop: '1.5rem',
               padding: '1.25rem',
               borderRadius: '12px',
-              background: getRankLabel(totalScore).bg,
-              border: `2px solid ${getRankLabel(totalScore).color}`,
+              background: rank.bg,
+              border: `2px solid ${rank.color}`,
               textAlign: 'center'
             }}>
               <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.25rem' }}>คะแนนรวม</div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: getRankLabel(totalScore).color }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: rank.color }}>
                 {totalScore} <span style={{ fontSize: '1rem' }}>/ 30</span>
               </div>
               <div style={{
@@ -329,12 +414,12 @@ export default function FiveSInspection() {
                 marginTop: '0.5rem',
                 padding: '0.25rem 1rem',
                 borderRadius: '9999px',
-                background: getRankLabel(totalScore).color,
+                background: rank.color,
                 color: '#fff',
                 fontWeight: 'bold',
                 fontSize: '0.95rem'
               }}>
-                {getRankLabel(totalScore).label}
+                {rank.label}
               </div>
             </div>
           </div>
@@ -353,18 +438,122 @@ export default function FiveSInspection() {
             </div>
           </div>
 
+          {/* Photo Upload Section */}
+          <div className="form-section">
+            <h3 className="form-section-title">📷 แนบรูปภาพหลักฐาน</h3>
+            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+              แนบรูปภาพได้สูงสุด 5 รูป (JPEG, PNG, HEIC) — คลิกหรือถ่ายจากกล้อง
+            </p>
+
+            {/* Upload Area */}
+            <div
+              className="photo-upload-area"
+              onClick={() => photos.length < 20 && fileInputRef.current?.click()}
+              style={{ cursor: photos.length >= 20 ? 'not-allowed' : 'pointer' }}
+            >
+              <div className="photo-upload-icon">📷</div>
+              <div className="photo-upload-text">
+                {photos.length >= 20
+                  ? 'ครบ 20 รูปแล้ว'
+                  : `แตะเพื่อเลือกรูป หรือถ่ายรูป (${photos.length}/20)`}
+              </div>
+              <div className="photo-upload-hint">รองรับ JPG, PNG, HEIC</div>
+            </div>
+
+            {/* Hidden File Input — รองรับกล้องมือถือด้วย */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              style={{ display: 'none' }}
+              onChange={handlePhotoSelect}
+            />
+
+            {/* Also a gallery-style select button that doesn't force camera */}
+            {photos.length < 20 && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    // Create a temp input without capture for gallery mode
+                    const inp = document.createElement('input');
+                    inp.type = 'file';
+                    inp.accept = 'image/*';
+                    inp.multiple = true;
+                    inp.onchange = handlePhotoSelect;
+                    inp.click();
+                  }}
+                >
+                  🖼️ เลือกจากคลัง
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  📸 ถ่ายรูป (กล้อง)
+                </button>
+              </div>
+            )}
+
+            {/* Photo Preview Grid */}
+            {photos.length > 0 && (
+              <div className="photo-preview-grid">
+                {photos.map(photo => (
+                  <div key={photo.id} className="photo-thumb">
+                    <img
+                      src={photo.preview}
+                      alt="preview"
+                      className="photo-thumb-img"
+                      onClick={() => setLightboxUrl(photo.preview)}
+                    />
+                    <button
+                      type="button"
+                      className="photo-thumb-remove"
+                      onClick={() => removePhoto(photo.id)}
+                      title="ลบรูป"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div style={{ marginTop: '1.5rem' }}>
             <button
               type="submit"
               className="btn btn-primary btn-lg"
               style={{ width: '100%' }}
-              disabled={submitting || masterLoading}
+              disabled={submitting || masterLoading || uploadingPhotos}
             >
-              {submitting ? 'กำลังบันทึก...' : '💾 บันทึกผลการตรวจ 5ส'}
+              {submitting
+                ? (uploadingPhotos ? `⏳ กำลังอัพโหลดรูป (${photos.length} รูป)...` : 'กำลังบันทึก...')
+                : '💾 บันทึกผลการตรวจ 5ส'}
             </button>
           </div>
         </form>
       </div>
+
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="photo-lightbox"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="photo-lightbox-inner" onClick={e => e.stopPropagation()}>
+            <button
+              className="photo-lightbox-close"
+              onClick={() => setLightboxUrl(null)}
+            >✕</button>
+            <img src={lightboxUrl} alt="ขยาย" className="photo-lightbox-img" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

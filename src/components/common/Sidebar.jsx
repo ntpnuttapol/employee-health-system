@@ -2,13 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Sidebar({ onLinkClick }) {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   const handleLinkClick = () => {
     if (onLinkClick) onLinkClick();
@@ -103,32 +98,6 @@ export default function Sidebar({ onLinkClick }) {
           </NavLink>
         </div>
       </nav>
-
-      <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="sidebar-user-avatar">
-            {user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U'}
-          </div>
-          <div className="sidebar-user-info">
-            <div className="sidebar-user-name">{user?.full_name || user?.username || 'ผู้ใช้งาน'}</div>
-            <div className="sidebar-user-role">{user?.role === 'Admin' ? '👑 Admin' : '👤 User'}</div>
-          </div>
-        </div>
-        <NavLink 
-          to="/profile" 
-          className={({ isActive }) => `btn btn-secondary ${isActive ? 'active' : ''}`}
-          style={{ width: '100%', marginTop: '0.5rem', textAlign: 'center', textDecoration: 'none' }}
-        >
-          ⚙️ โปรไฟล์
-        </NavLink>
-        <button
-          className="btn btn-secondary"
-          style={{ width: '100%', marginTop: '0.5rem' }}
-          onClick={handleLogout}
-        >
-          🚪 ออกจากระบบ
-        </button>
-      </div>
     </>
   );
 }

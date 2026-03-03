@@ -16,13 +16,18 @@ export default function FiveSResults() {
   );
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterMonth, setFilterMonth] = useState('');
+
+  // Default ให้เป็นวันที่ปัจจุบัน YYYY-MM-DD
+  const todayStr = new Date().toISOString().split('T')[0];
+  const [filterDate, setFilterDate] = useState(todayStr);
+
   const [searchName, setSearchName] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [editItem, setEditItem] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
 
   // พลุเมื่อเปิด podium
   const fireConfetti = useCallback(() => {
@@ -42,8 +47,8 @@ export default function FiveSResults() {
 
   // ออกรีพอร์ต PDF
   const printReport = () => {
-    const monthLabel = filterMonth
-      ? new Date(filterMonth + '-01').toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })
+    const dateLabel = filterDate
+      ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
       : 'ทั้งหมด';
 
     const rows = departmentRanking.map((dept, idx) => {
@@ -74,7 +79,7 @@ export default function FiveSResults() {
   <img src="/pfslogo.png" style="height:60px;margin-bottom:8px" />
   <h1 style="margin:0;font-size:1.5em;color:#1e3a5f">รายงานผลคะแนนการตรวจ 5ส</h1>
   <p style="margin:4px 0 0;color:#6b7280;font-size:0.95em">Polyfoam PFS — สาขาสุวรรณภูมิ</p>
-  <p style="margin:4px 0 0;color:#6b7280;font-size:0.9em">เดือน: ${monthLabel} | จำนวนแผนกที่ตรวจ: ${departmentRanking.length} แผนก</p>
+  <p style="margin:4px 0 0;color:#6b7280;font-size:0.9em">ประจำวันที่: ${dateLabel} | จำนวนแผนกที่ตรวจ: ${departmentRanking.length} แผนก</p>
 </div>
 <table>
   <thead><tr>
@@ -89,7 +94,7 @@ export default function FiveSResults() {
   <tbody>${rows}</tbody>
 </table>
 <div style="margin-top:24px;text-align:center;color:#9ca3af;font-size:0.8em">
-  พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit' })}
+  พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
 </div>
 </body></html>`;
 
@@ -103,7 +108,7 @@ export default function FiveSResults() {
     setLoading(true);
     let query = supabase
       .from('five_s_inspections')
-      .select('*, departments(name)')
+      .select('*, departments(name), photo_urls')
       .order('inspection_date', { ascending: false });
 
     const { data, error } = await query;
@@ -117,9 +122,9 @@ export default function FiveSResults() {
     fetchInspections();
   }, []);
 
-  // Filter by month
-  const filtered = filterMonth
-    ? inspections.filter(i => i.inspection_date?.startsWith(filterMonth))
+  // Filter by EXACT DATE
+  const filtered = filterDate
+    ? inspections.filter(i => i.inspection_date === filterDate)
     : inspections;
 
   // Build department ranking from filtered data
@@ -188,15 +193,6 @@ export default function FiveSResults() {
     return '#3b82f6';
   };
 
-  // Month options from data
-  const monthOptions = (() => {
-    const months = new Set();
-    inspections.forEach(i => {
-      if (i.inspection_date) months.add(i.inspection_date.substring(0, 7));
-    });
-    return Array.from(months).sort().reverse();
-  })();
-
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '4rem', color: '#6b7280' }}>
@@ -217,20 +213,23 @@ export default function FiveSResults() {
 
       {/* Filter */}
       <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <label style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>กรองเดือน:</label>
-        <select
-          className="form-select"
-          style={{ maxWidth: '220px' }}
-          value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
+        <label style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>เลือกวันที่ตรวจ:</label>
+        <input
+          type="date"
+          className="form-input"
+          style={{ maxWidth: '200px' }}
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+        />
+        <button
+          className="btn btn-secondary"
+          onClick={() => setFilterDate('')}
+          disabled={!filterDate}
+          style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
         >
-          <option value="">ทั้งหมด</option>
-          {monthOptions.map(m => {
-            const [y, mo] = m.split('-');
-            const label = new Date(y, parseInt(mo) - 1).toLocaleDateString('th-TH', { year: 'numeric', month: 'long' });
-            return <option key={m} value={m}>{label}</option>;
-          })}
-        </select>
+          ล้างวันที่ (ดูทั้งหมด)
+        </button>
+
         <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
           ({filtered.length} รายการ จาก {departmentRanking.length} แผนก)
         </span>
@@ -334,9 +333,9 @@ export default function FiveSResults() {
               🎉 ประกาศผลอันดับ 5ส 🎉
             </div>
             <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '2rem' }}>
-              {filterMonth
-                ? new Date(filterMonth + '-01').toLocaleDateString('th-TH', { year: 'numeric', month: 'long' })
-                : 'ทั้งหมด'}
+              {filterDate
+                ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+                : 'ข้อมูลทั้งหมด'}
             </div>
 
             {/* Podium */}
@@ -757,6 +756,7 @@ export default function FiveSResults() {
                           <th style={{ textAlign: 'center' }}>ความท้าทาย</th>
                           <th style={{ textAlign: 'center' }}>รวม</th>
                           <th>หมายเหตุ</th>
+                          <th style={{ textAlign: 'center', width: '80px' }}>รูป</th>
                           <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>
                         </tr>
                       </thead>
@@ -771,6 +771,41 @@ export default function FiveSResults() {
                             <td style={{ textAlign: 'center' }}>{ins.score_innovation}</td>
                             <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ins.total_score}/30</td>
                             <td style={{ fontSize: '0.85rem', color: '#6b7280' }}>{ins.notes || '-'}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              {(ins.photo_urls && ins.photo_urls.length > 0) ? (
+                                <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                  {ins.photo_urls.slice(0, 3).map((url, idx) => (
+                                    <img
+                                      key={idx}
+                                      src={url}
+                                      alt={`รูป ${idx + 1}`}
+                                      style={{
+                                        width: '36px', height: '36px',
+                                        objectFit: 'cover',
+                                        borderRadius: '6px',
+                                        cursor: 'pointer',
+                                        border: '1px solid #e5e7eb'
+                                      }}
+                                      onClick={() => setLightboxUrl(url)}
+                                    />
+                                  ))}
+                                  {ins.photo_urls.length > 3 && (
+                                    <span style={{
+                                      width: '36px', height: '36px',
+                                      background: '#f3f4f6',
+                                      borderRadius: '6px',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      fontSize: '0.7rem', color: '#6b7280', fontWeight: 'bold',
+                                      cursor: 'pointer'
+                                    }}
+                                      onClick={() => setLightboxUrl(ins.photo_urls[3])}
+                                    >+{ins.photo_urls.length - 3}</span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
+                              )}
+                            </td>
                             <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                               <button
                                 className="btn btn-secondary"
@@ -790,7 +825,8 @@ export default function FiveSResults() {
                                     score_improvement: ins.score_improvement,
                                     score_cleanliness: ins.score_cleanliness,
                                     score_innovation: ins.score_innovation,
-                                    notes: ins.notes || ''
+                                    notes: ins.notes || '',
+                                    photo_urls: ins.photo_urls || []
                                   });
                                 }}
                               >
@@ -819,6 +855,21 @@ export default function FiveSResults() {
             })()}
           </div>
         </>
+      )}
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          className="photo-lightbox"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="photo-lightbox-inner" onClick={e => e.stopPropagation()}>
+            <button
+              className="photo-lightbox-close"
+              onClick={() => setLightboxUrl(null)}
+            >✕</button>
+            <img src={lightboxUrl} alt="ขยาย" className="photo-lightbox-img" />
+          </div>
+        </div>
       )}
     </div>
   );

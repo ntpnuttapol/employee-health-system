@@ -62,7 +62,7 @@ function AppLayout() {
   return (
     <>
       {/* Mobile Menu Button */}
-      <button 
+      <button
         className="mobile-menu-btn"
         onClick={toggleMobileMenu}
         aria-label="Toggle menu"
@@ -72,7 +72,7 @@ function AppLayout() {
 
       {/* Mobile Backdrop */}
       {mobileMenuOpen && (
-        <div 
+        <div
           className="mobile-backdrop"
           onClick={closeMobileMenu}
           style={{
@@ -92,7 +92,7 @@ function AppLayout() {
           <HeaderBar />
           <Routes>
             <Route path="/dashboard" element={<DashboardPage />} />
-            
+
             {/* Admin Only Routes */}
             <Route path="/users" element={
               <ProtectedRoute adminOnly><UserManagement /></ProtectedRoute>
@@ -109,17 +109,17 @@ function AppLayout() {
             <Route path="/employees" element={
               <ProtectedRoute adminOnly><EmployeeManagement /></ProtectedRoute>
             } />
-            
+
             {/* Activity Routes */}
             <Route path="/activities" element={<ActivityList />} />
             <Route path="/activities/:id" element={<ActivityDetail />} />
             <Route path="/activity-scan" element={<ActivityScan />} />
-            
+
             {/* Health Routes */}
             <Route path="/health-dashboard" element={<HealthDashboard />} />
             <Route path="/health-entry" element={<HealthDataEntry />} />
             <Route path="/health-records" element={<HealthRecords />} />
-            
+
             {/* 5S Inspection Routes */}
             <Route path="/five-s" element={<FiveSInspection />} />
             <Route path="/five-s-results" element={
@@ -143,7 +143,7 @@ export default function App() {
       <Route path="/login" element={
         user ? <Navigate to="/dashboard" replace /> : <LoginPage />
       } />
-      
+
       <Route path="/" element={
         <Navigate to={user ? "/dashboard" : "/login"} replace />
       } />

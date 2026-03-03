@@ -33,12 +33,12 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     console.log('Login attempt:', username);
-    
+
     try {
-      // Query users table
+      // Query users table, joining employees and departments
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, full_name, email, role, employee_id, is_active')
+        .select('id, username, full_name, email, role, employee_id, is_active, employees(id, first_name, last_name, department_id, departments(id, name))')
         .eq('username', username)
         .eq('password', password)
         .eq('is_active', true)
@@ -54,11 +54,11 @@ export function AuthProvider({ children }) {
       }
 
       console.log('Login successful:', data.username);
-      
+
       // Save to localStorage
       localStorage.setItem(SESSION_KEY, JSON.stringify(data));
       setUser(data);
-      
+
       return data;
     } catch (err) {
       console.error('Login error:', err);
@@ -83,14 +83,14 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      isAdmin, 
-      isAuthenticated, 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      isAdmin,
+      isAuthenticated,
       loading,
-      updateUserSession 
+      updateUserSession
     }}>
       {children}
     </AuthContext.Provider>

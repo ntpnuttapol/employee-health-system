@@ -314,6 +314,7 @@ export default function FiveSInspection() {
                   {filteredDepartments
                     .filter(dept => !formData.inspector_department_id || String(dept.id) !== String(formData.inspector_department_id))
                     .filter(dept => !inspectedDepartmentIds.includes(String(dept.id)))
+                    .filter(dept => !dept.name.toLowerCase().includes('safety')) // Exclude Safety department
                     .map(dept => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}

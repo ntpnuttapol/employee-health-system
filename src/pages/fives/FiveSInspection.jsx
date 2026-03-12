@@ -72,7 +72,20 @@ export default function FiveSInspection() {
         .select('id, department_id, inspector_name, inspector_employee_id, departments(name)')
         .gte('inspection_date', startDate)
         .lte('inspection_date', endDate);
-      setMonthInspections(data || []);
+      
+      // Filter out exact duplicates based on department_id and inspector for the state
+      const uniqueData = (data || []).reduce((acc, current) => {
+        const x = acc.find(item => item.department_id === current.department_id && 
+                                   (item.inspector_employee_id === current.inspector_employee_id || 
+                                    item.inspector_name === current.inspector_name));
+        if (!x) {
+          return acc.concat([current]);
+        } else {
+          return acc;
+        }
+      }, []);
+      
+      setMonthInspections(uniqueData);
     };
     fetchMonthData();
   }, [selectedMonth]);
@@ -85,7 +98,17 @@ export default function FiveSInspection() {
     return sameInspector;
   });
 
-  const inspectedDepartmentIds = myInspections.map(ins => String(ins.department_id));
+  // Ensure unique departments in the displayed list
+  const uniqueInspectedDepartments = myInspections.reduce((acc, current) => {
+    const x = acc.find(item => item.department_id === current.department_id);
+    if (!x) {
+      return acc.concat([current]);
+    } else {
+      return acc;
+    }
+  }, []);
+
+  const inspectedDepartmentIds = uniqueInspectedDepartments.map(ins => String(ins.department_id));
 
   const totalScore = (
     (parseInt(formData.score_improvement) || 0) +
@@ -216,13 +239,25 @@ export default function FiveSInspection() {
 
     if (!error) {
       setStatus({ type: 'success', message: `บันทึกผลการตรวจ 5ส เรียบร้อยแล้ว${photoUrls.length > 0 ? ` (แนบรูป ${photoUrls.length} รูป)` : ''}` });
-      setMonthInspections(prev => [...prev, {
-        id: data?.[0]?.id,
-        department_id: insertData.department_id,
-        inspector_name: insertData.inspector_name,
-        inspector_employee_id: insertData.inspector_employee_id,
-        departments: { name: filteredDepartments.find(d => d.id === insertData.department_id)?.name }
-      }]);
+      
+      // Update monthInspections state, avoiding duplicates
+      setMonthInspections(prev => {
+        const isAlreadyInPrev = prev.some(item => 
+          item.department_id === insertData.department_id && 
+          (item.inspector_employee_id === insertData.inspector_employee_id || 
+           item.inspector_name === insertData.inspector_name)
+        );
+        if (isAlreadyInPrev) return prev;
+        
+        return [...prev, {
+          id: data?.[0]?.id,
+          department_id: insertData.department_id,
+          inspector_name: insertData.inspector_name,
+          inspector_employee_id: insertData.inspector_employee_id,
+          departments: { name: filteredDepartments.find(d => d.id === insertData.department_id)?.name }
+        }];
+      });
+      
       // Reset form
       setFormData({
         department_id: '',
@@ -286,16 +321,16 @@ export default function FiveSInspection() {
                       gap: '4px'
                     }}
                   >
-                    {showInspectedList ? 'ซ่อน' : `🔍 ดูแผนกที่ตรวจแล้ว (${myInspections.length})`}
+                    {showInspectedList ? 'ซ่อน' : `🔍 ดูแผนกที่ตรวจแล้ว (${uniqueInspectedDepartments.length})`}
                   </button>
                 </div>
                 {showInspectedList && (
                   <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.85rem' }}>
                     <strong style={{ color: '#4b5563' }}>✅ แผนกที่คุณตรวจแล้วในเดือนนี้:</strong>
-                    {myInspections.length > 0 ? (
+                    {uniqueInspectedDepartments.length > 0 ? (
                       <ul style={{ margin: '0.5rem 0 0 1.5rem', padding: 0, color: '#10b981' }}>
-                        {myInspections.map(ins => (
-                          <li key={ins.id} style={{ marginBottom: '0.25rem' }}>{ins.departments?.name || 'ไม่ทราบแผนก'}</li>
+                        {uniqueInspectedDepartments.map(ins => (
+                          <li key={ins.id || ins.department_id} style={{ marginBottom: '0.25rem' }}>{ins.departments?.name || 'ไม่ทราบแผนก'}</li>
                         ))}
                       </ul>
                     ) : (

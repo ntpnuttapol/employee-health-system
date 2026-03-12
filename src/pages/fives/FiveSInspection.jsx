@@ -90,9 +90,6 @@ export default function FiveSInspection() {
     fetchMonthData();
   }, [selectedMonth]);
 
-  // กรองแผนกที่ถูกตรวจไปแล้วในเดือนนี้ (ไม่ว่าใครจะเป็นคนตรวจก็ตาม)
-  const allInspectedDepartmentIds = monthInspections.map(ins => String(ins.department_id));
-
   const myInspections = monthInspections.filter(ins => {
     if (!formData.inspector_employee_id && !formData.inspector_name) return false;
     const sameInspector = formData.inspector_employee_id
@@ -351,7 +348,7 @@ export default function FiveSInspection() {
                   <option value="">-- เลือกแผนก (สาขาสุวรรณภูมิ) --</option>
                   {filteredDepartments
                     .filter(dept => !formData.inspector_department_id || String(dept.id) !== String(formData.inspector_department_id))
-                    .filter(dept => !allInspectedDepartmentIds.includes(String(dept.id))) // กรองแผนกที่ถูกตรวจไปแล้วในเดือนนี้ (ทุกคน)
+                    .filter(dept => !inspectedDepartmentIds.includes(String(dept.id))) // กรองเฉพาะแผนกที่ผู้ตรวจคนนี้เคยตรวจไปแล้ว
                     .filter(dept => !dept.name.toLowerCase().includes('safety')) // Exclude Safety department
                     .map(dept => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>

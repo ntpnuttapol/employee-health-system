@@ -59,19 +59,15 @@ export default function FiveSInspection() {
     ? activeEmployees.filter(e => String(e.department_id) === String(formData.inspector_department_id))
     : [];
 
-  // ดึงข้อมูลการตรวจของเดือนที่เลือก
-  const selectedMonth = formData.inspection_date ? formData.inspection_date.substring(0, 7) : '';
+  // ดึงข้อมูลการตรวจของวันที่เลือก
+  const selectedDate = formData.inspection_date || '';
   useEffect(() => {
-    if (!selectedMonth) return;
-    const fetchMonthData = async () => {
-      const startDate = `${selectedMonth}-01`;
-      const [y, m] = selectedMonth.split('-').map(Number);
-      const endDate = new Date(y, m, 0).toISOString().split('T')[0];
+    if (!selectedDate) return;
+    const fetchDayData = async () => {
       const { data } = await supabase
         .from('five_s_inspections')
         .select('id, department_id, inspector_name, inspector_employee_id, departments(name)')
-        .gte('inspection_date', startDate)
-        .lte('inspection_date', endDate);
+        .eq('inspection_date', selectedDate);
       
       // Filter out exact duplicates based on department_id and inspector for the state
       const uniqueData = (data || []).reduce((acc, current) => {
@@ -87,8 +83,8 @@ export default function FiveSInspection() {
       
       setMonthInspections(uniqueData);
     };
-    fetchMonthData();
-  }, [selectedMonth]);
+    fetchDayData();
+  }, [selectedDate]);
 
   const myInspections = monthInspections.filter(ins => {
     if (!formData.inspector_employee_id && !formData.inspector_name) return false;
@@ -326,7 +322,7 @@ export default function FiveSInspection() {
                 </div>
                 {showInspectedList && (
                   <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.85rem' }}>
-                    <strong style={{ color: '#4b5563' }}>✅ แผนกที่คุณตรวจแล้วในเดือนนี้:</strong>
+                    <strong style={{ color: '#4b5563' }}>✅ แผนกที่คุณตรวจแล้ววันที่ {selectedDate}:</strong>
                     {uniqueInspectedDepartments.length > 0 ? (
                       <ul style={{ margin: '0.5rem 0 0 1.5rem', padding: 0, color: '#10b981' }}>
                         {uniqueInspectedDepartments.map(ins => (

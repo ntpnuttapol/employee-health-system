@@ -20,6 +20,7 @@ export default function FiveSInspection() {
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState({ type: '', message: '' });
   const [monthInspections, setMonthInspections] = useState([]);
+  const [showInspectedList, setShowInspectedList] = useState(false);
 
   // Photo states
   const [photos, setPhotos] = useState([]); // { file, preview }
@@ -30,6 +31,7 @@ export default function FiveSInspection() {
   const [formData, setFormData] = useState({
     department_id: '',
     inspector_department_id: '',
+    inspector_employee_id: '',
     inspector_name: '',
     inspection_date: new Date().toISOString().split('T')[0],
     score_improvement: '',
@@ -46,6 +48,7 @@ export default function FiveSInspection() {
       setFormData(prev => ({
         ...prev,
         inspector_department_id: user.employees.department_id || '',
+        inspector_employee_id: String(user.employees.id || ''),
         inspector_name: `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
       }));
     }
@@ -66,13 +69,23 @@ export default function FiveSInspection() {
       const endDate = new Date(y, m, 0).toISOString().split('T')[0];
       const { data } = await supabase
         .from('five_s_inspections')
-        .select('id, department_id, inspector_name, departments(name)')
+        .select('id, department_id, inspector_name, inspector_employee_id, departments(name)')
         .gte('inspection_date', startDate)
         .lte('inspection_date', endDate);
       setMonthInspections(data || []);
     };
     fetchMonthData();
   }, [selectedMonth]);
+
+  const myInspections = monthInspections.filter(ins => {
+    if (!formData.inspector_employee_id && !formData.inspector_name) return false;
+    const sameInspector = formData.inspector_employee_id
+      ? String(ins.inspector_employee_id) === String(formData.inspector_employee_id)
+      : ins.inspector_name === formData.inspector_name;
+    return sameInspector;
+  });
+
+  const inspectedDepartmentIds = myInspections.map(ins => String(ins.department_id));
 
   const totalScore = (
     (parseInt(formData.score_improvement) || 0) +
@@ -115,9 +128,10 @@ export default function FiveSInspection() {
   };
 
   const uploadPhotos = async () => {
-    if (!photos.length) return [];
+    if (!photos.length) return { urls: [], uploadError: null };
     setUploadingPhotos(true);
     const urls = [];
+    let uploadError = null;
     for (const photo of photos) {
       const ext = photo.file.name.split('.').pop();
       const fileName = `five-s/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -131,10 +145,11 @@ export default function FiveSInspection() {
         if (urlData?.publicUrl) urls.push(urlData.publicUrl);
       } else {
         console.error('Upload error:', error);
+        uploadError = error.message || JSON.stringify(error);
       }
     }
     setUploadingPhotos(false);
-    return urls;
+    return { urls, uploadError };
   };
 
   // ---- Submit ----
@@ -159,11 +174,13 @@ export default function FiveSInspection() {
       }
     }
 
-    // เช็คซ้ำ
-    const isDuplicate = monthInspections.some(
-      ins => ins.inspector_name === formData.inspector_name
-        && String(ins.department_id) === String(formData.department_id)
-    );
+    // เช็คซ้ำ (ใช้ employee ID ถ้ามี ไม่งั้นใช้ชื่อ)
+    const isDuplicate = monthInspections.some(ins => {
+      const sameInspector = formData.inspector_employee_id
+        ? String(ins.inspector_employee_id) === String(formData.inspector_employee_id)
+        : ins.inspector_name === formData.inspector_name;
+      return sameInspector && String(ins.department_id) === String(formData.department_id);
+    });
     if (isDuplicate) {
       const deptName = filteredDepartments.find(d => String(d.id) === String(formData.department_id))?.name || '';
       setStatus({ type: 'error', message: `"${formData.inspector_name}" ให้คะแนนแผนก "${deptName}" ในเดือนนี้แล้ว` });
@@ -174,11 +191,18 @@ export default function FiveSInspection() {
     setStatus({ type: '', message: '' });
 
     // อัพโหลดรูปก่อน
-    const photoUrls = await uploadPhotos();
+    const { urls: photoUrls, uploadError } = await uploadPhotos();
+
+    if (uploadError) {
+      setStatus({ type: 'error', message: `❌ อัปโหลดรูปไม่สำเร็จ: ${uploadError}` });
+      setSubmitting(false);
+      return;
+    }
 
     const insertData = {
       department_id: parseInt(formData.department_id),
       inspector_name: formData.inspector_name,
+      inspector_employee_id: formData.inspector_employee_id ? parseInt(formData.inspector_employee_id) : null,
       inspection_date: formData.inspection_date,
       score_improvement: scores[0],
       score_cleanliness: scores[1],
@@ -196,12 +220,14 @@ export default function FiveSInspection() {
         id: data?.[0]?.id,
         department_id: insertData.department_id,
         inspector_name: insertData.inspector_name,
+        inspector_employee_id: insertData.inspector_employee_id,
         departments: { name: filteredDepartments.find(d => d.id === insertData.department_id)?.name }
       }]);
       // Reset form
       setFormData({
         department_id: '',
         inspector_department_id: user?.employees?.department_id || '',
+        inspector_employee_id: user?.employees?.id ? String(user.employees.id) : '',
         inspector_name: user?.employees ? `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim() : '',
         inspection_date: formData.inspection_date,
         score_improvement: '',
@@ -242,7 +268,41 @@ export default function FiveSInspection() {
           <div className="form-section">
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label required">แผนกที่ตรวจ</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label className="form-label required" style={{ marginBottom: 0 }}>แผนกที่ตรวจ</label>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowInspectedList(!showInspectedList)}
+                    style={{ 
+                      fontSize: '0.8rem', 
+                      padding: '0.25rem 0.5rem', 
+                      backgroundColor: '#e5e7eb', 
+                      color: '#374151',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    {showInspectedList ? 'ซ่อน' : `🔍 ดูแผนกที่ตรวจแล้ว (${myInspections.length})`}
+                  </button>
+                </div>
+                {showInspectedList && (
+                  <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', fontSize: '0.85rem' }}>
+                    <strong style={{ color: '#4b5563' }}>✅ แผนกที่คุณตรวจแล้วในเดือนนี้:</strong>
+                    {myInspections.length > 0 ? (
+                      <ul style={{ margin: '0.5rem 0 0 1.5rem', padding: 0, color: '#10b981' }}>
+                        {myInspections.map(ins => (
+                          <li key={ins.id} style={{ marginBottom: '0.25rem' }}>{ins.departments?.name || 'ไม่ทราบแผนก'}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div style={{ color: '#6b7280', marginTop: '0.5rem' }}>ยังไม่ได้ตรวจแผนกใดเลย</div>
+                    )}
+                  </div>
+                )}
                 <select
                   className="form-select"
                   value={formData.department_id}
@@ -253,6 +313,7 @@ export default function FiveSInspection() {
                   <option value="">-- เลือกแผนก (สาขาสุวรรณภูมิ) --</option>
                   {filteredDepartments
                     .filter(dept => !formData.inspector_department_id || String(dept.id) !== String(formData.inspector_department_id))
+                    .filter(dept => !inspectedDepartmentIds.includes(String(dept.id)))
                     .map(dept => (
                       <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
@@ -295,14 +356,21 @@ export default function FiveSInspection() {
                 <label className="form-label required">ชื่อผู้ตรวจ</label>
                 <select
                   className="form-select"
-                  value={formData.inspector_name}
-                  onChange={(e) => setFormData({ ...formData, inspector_name: e.target.value })}
+                  value={formData.inspector_employee_id}
+                  onChange={(e) => {
+                    const selected = inspectorList.find(emp => String(emp.id) === e.target.value);
+                    setFormData({
+                      ...formData,
+                      inspector_employee_id: e.target.value,
+                      inspector_name: selected ? `${selected.first_name} ${selected.last_name}`.trim() : ''
+                    });
+                  }}
                   required
                   disabled={!formData.inspector_department_id || !!user?.employees?.department_id}
                 >
                   <option value="">{formData.inspector_department_id ? '-- เลือกผู้ตรวจ --' : '-- เลือกแผนกก่อน --'}</option>
                   {inspectorList.map(emp => (
-                    <option key={emp.id} value={`${emp.first_name} ${emp.last_name}`}>
+                    <option key={emp.id} value={String(emp.id)}>
                       {emp.first_name} {emp.last_name}
                     </option>
                   ))}

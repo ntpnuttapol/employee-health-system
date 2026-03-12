@@ -2156,3 +2156,131 @@ a:hover {
     display: none !important;
   }
 }
+
+/* ========================================
+   MOBILE FIXES — Comprehensive (390px+)
+   ======================================== */
+
+@media (max-width: 768px) {
+
+  /* Prevent global horizontal scroll */
+  body,
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* ---- Header Bar ---- */
+  .header-bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem 0.5rem 60px;
+    overflow: hidden;
+  }
+
+  .header-search {
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .header-search input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* ---- 5S Results: Stats Cards row → vertical list ---- */
+  /* The stats summary cards overflow because they're in a flex row */
+  div[style*="display: grid"][style*="minmax(150px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ---- 5S Results: filter row ---- */
+  div[style*="align-items: center"][style*="gap: 1rem"] {
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
+  }
+
+  /* ---- Employee Management: search filter controls ---- */
+  .employee-filters,
+  div[style*="display: flex"][style*="gap"][style*="flexWrap"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+
+  /* ---- Tables: guaranteed horizontal scroll ---- */
+  .card>div>table,
+  div[style*="overflowX: auto"]>table,
+  div[style*="overflow-x: auto"]>table {
+    min-width: 500px;
+  }
+
+  div[style*="overflowX: auto"],
+  div[style*="overflow-x: auto"] {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto !important;
+  }
+
+  /* ---- 5S Form: 2-col form row → single column ---- */
+  div[style*="display: grid"][style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  div[style*="gridTemplateColumns: '1fr 1fr'"],
+  div[style*="gridTemplateColumns:"][style*="1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* ---- Dashboard Stat grid stays 2 cols, not 4 ---- */
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* ---- Buttons full width in filter-like rows ---- */
+  .page-header-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Extra small phones (< 420px) */
+@media (max-width: 420px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Stack 2-col grids that use inline style */
+  div[style*="gridTemplateColumns"][style*="1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ========================================
+   5S Results — Responsive Table vs Cards
+   ======================================== */
+
+/* Desktop: show table, hide cards */
+.ranking-table-desktop {
+  display: block !important;
+  overflow-x: auto;
+}
+
+.ranking-cards-mobile {
+  display: none !important;
+}
+
+/* Mobile: hide table, show cards */
+@media (max-width: 640px) {
+  .ranking-table-desktop {
+    display: none !important;
+  }
+
+  .ranking-cards-mobile {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}

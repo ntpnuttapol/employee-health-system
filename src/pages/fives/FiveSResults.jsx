@@ -28,6 +28,7 @@ export default function FiveSResults() {
   const [saving, setSaving] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [galleryPhotos, setGalleryPhotos] = useState(null);
 
   // พลุเมื่อเปิด podium
   const fireConfetti = useCallback(() => {
@@ -104,11 +105,83 @@ export default function FiveSResults() {
     w.onload = () => { w.print(); };
   };
 
+  // ออกรีพอร์ตรูปภาพแยกตามแผนก
+  const printPhotoReport = () => {
+    // จัดกลุ่มการตรวจที่มีรูปภาพ ตามชื่อแผนก
+    const allWithPhotos = inspections.filter(ins => ins.photo_urls && ins.photo_urls.length > 0);
+    if (allWithPhotos.length === 0) {
+      alert('ยังไม่มีรูปภาพในระบบ กรุณาอัปโหลดรูปภาพก่อนออกรายงาน');
+      return;
+    }
+
+    // group by department name
+    const grouped = {};
+    allWithPhotos.forEach(ins => {
+      const deptName = ins.departments?.name || `แผนก ${ins.department_id}`;
+      if (!grouped[deptName]) grouped[deptName] = [];
+      grouped[deptName].push(ins);
+    });
+
+    const dateLabel = filterDate
+      ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+      : 'ทั้งหมด';
+
+    const deptSections = Object.entries(grouped).map(([deptName, records]) => {
+      const inspectionBlocks = records.map(ins => {
+        const dateStr = new Date(ins.inspection_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+        const photoGrid = ins.photo_urls.map(url =>
+          `<img src="${url}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" />`
+        ).join('');
+        return `
+          <div style="margin-bottom:1.5rem;padding:1rem;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
+            <div style="display:flex;gap:2rem;margin-bottom:0.75rem;flex-wrap:wrap;">
+              <span>📅 <strong>วันที่ตรวจ:</strong> ${dateStr}</span>
+              <span>👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
+              <span>⭐ <strong>คะแนนรวม:</strong> <strong style="color:#1e3a5f;font-size:1.1em">${ins.total_score}/30</strong></span>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;">
+              ${photoGrid}
+            </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div style="page-break-inside:avoid;margin-bottom:2.5rem;">
+          <h2 style="background:#1e3a5f;color:#fff;padding:0.6rem 1rem;border-radius:8px;font-size:1.1em;margin-bottom:1rem;">
+            📁 แผนก: ${deptName} (${records.length} รายการ)
+          </h2>
+          ${inspectionBlocks}
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>รายงานรูปภาพการตรวจ 5ส</title>
+<style>
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+  body { font-family: 'Sarabun', 'Segoe UI', sans-serif; padding: 24px; color: #111; font-size: 14px; }
+  h1 { margin: 0; font-size: 1.5em; color: #1e3a5f; }
+  p { margin: 4px 0; color: #6b7280; }
+</style></head><body>
+<div style="text-align:center;margin-bottom:28px;border-bottom:2px solid #1e3a5f;padding-bottom:16px;">
+  <img src="/pfslogo.png" style="height:60px;margin-bottom:8px" />
+  <h1>รายงานรูปภาพการตรวจ 5ส แยกตามแผนก</h1>
+  <p>Polyfoam PFS — สาขาสุวรรณภูมิ</p>
+  <p>พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+</div>
+${deptSections}
+</body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.onload = () => { w.print(); };
+  };
+
   const fetchInspections = async () => {
     setLoading(true);
     let query = supabase
       .from('five_s_inspections')
-      .select('*, departments(name), photo_urls')
+      .select('*, departments(name), photo_urls, inspector_employee_id')
       .order('inspection_date', { ascending: false });
 
     const { data, error } = await query;
@@ -141,7 +214,8 @@ export default function FiveSResults() {
           totalScore: 0,
           count: 0,
           latestDate: ins.inspection_date,
-          latestScore: ins.total_score
+          latestScore: ins.total_score,
+          latestPhotos: ins.photo_urls || []
         };
       }
       map[deptName].totalImprovement += ins.score_improvement;
@@ -152,6 +226,9 @@ export default function FiveSResults() {
       if (ins.inspection_date > map[deptName].latestDate) {
         map[deptName].latestDate = ins.inspection_date;
         map[deptName].latestScore = ins.total_score;
+        if (ins.photo_urls && ins.photo_urls.length > 0) {
+          map[deptName].latestPhotos = ins.photo_urls;
+        }
       }
     });
 
@@ -240,6 +317,14 @@ export default function FiveSResults() {
           disabled={departmentRanking.length === 0}
         >
           🖨️ ออกรีพอร์ต
+        </button>
+        <button
+          className="btn btn-primary"
+          style={{ marginLeft: '0.5rem' }}
+          onClick={printPhotoReport}
+          disabled={inspections.filter(i => i.photo_urls && i.photo_urls.length > 0).length === 0}
+        >
+          📸 รายงานรูปภาพ
         </button>
       </div>
 
@@ -420,18 +505,21 @@ export default function FiveSResults() {
           {/* Full Ranking Table */}
           <div className="card" style={{ marginBottom: '2rem' }}>
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📋 ตารางอันดับทุกแผนก</h2>
-            <div style={{ overflowX: 'auto' }}>
+
+            {/* === Desktop Table (hidden on mobile) === */}
+            <div style={{ overflowX: 'auto', display: 'none' }} className="ranking-table-desktop">
               <table className="table">
                 <thead>
                   <tr>
                     <th style={{ width: '70px', textAlign: 'center' }}>อันดับ</th>
                     <th>แผนก</th>
-                    <th style={{ textAlign: 'center' }}>การเปลี่ยนแปลง<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
-                    <th style={{ textAlign: 'center' }}>ความสะอาด<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
-                    <th style={{ textAlign: 'center' }}>ความท้าทาย<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                    <th style={{ textAlign: 'center' }}>เปลี่ยนแปลง<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                    <th style={{ textAlign: 'center' }}>สะอาด<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                    <th style={{ textAlign: 'center' }}>ท้าทาย<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
                     <th style={{ textAlign: 'center' }}>คะแนนรวม</th>
-                    <th style={{ textAlign: 'center' }}>จำนวนครั้ง</th>
-                    <th style={{ width: '180px' }}>กราฟ</th>
+                    <th style={{ textAlign: 'center' }}>รูป</th>
+                    <th style={{ textAlign: 'center' }}>ครั้ง</th>
+                    <th style={{ width: '140px' }}>กราฟ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -442,20 +530,10 @@ export default function FiveSResults() {
                     const maxScore = departmentRanking[0]?.totalScore || 1;
                     const barWidth = (dept.totalScore / maxScore) * 100;
                     const rowStyle = getRowStyle(rank);
-
                     return (
                       <tr key={dept.name} style={rowStyle}>
                         <td style={{ textAlign: 'center' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '0.2rem 0.6rem',
-                            borderRadius: '9999px',
-                            background: badge.bg,
-                            color: badge.color,
-                            fontWeight: 'bold',
-                            fontSize: '0.85rem',
-                            minWidth: '50px'
-                          }}>
+                          <span style={{ display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: '9999px', background: badge.bg, color: badge.color, fontWeight: 'bold', fontSize: '0.85rem', minWidth: '50px' }}>
                             {badge.icon} {rank}
                           </span>
                         </td>
@@ -464,42 +542,20 @@ export default function FiveSResults() {
                         <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalCleanliness}</td>
                         <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalInnovation}</td>
                         <td style={{ textAlign: 'center' }}>
-                          <span style={{
-                            fontWeight: 'bold',
-                            fontSize: '1.2rem',
-                            color: barColor
-                          }}>
-                            {dept.totalScore}
-                          </span>
+                          <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: barColor }}>{dept.totalScore}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          {(dept.latestPhotos && dept.latestPhotos.length > 0) ? (
+                            <button onClick={() => setGalleryPhotos(dept.latestPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6' }}>
+                              🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{dept.latestPhotos.length}</span>
+                            </button>
+                          ) : <span style={{ color: '#d1d5db' }}>—</span>}
                         </td>
                         <td style={{ textAlign: 'center' }}>{dept.count} ครั้ง</td>
                         <td>
-                          <div style={{
-                            width: '100%',
-                            height: '22px',
-                            background: '#f3f4f6',
-                            borderRadius: '11px',
-                            overflow: 'hidden',
-                            position: 'relative'
-                          }}>
-                            <div style={{
-                              width: `${barWidth}%`,
-                              height: '100%',
-                              background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`,
-                              borderRadius: '11px',
-                              transition: 'width 0.6s ease'
-                            }} />
-                            <span style={{
-                              position: 'absolute',
-                              top: '50%',
-                              left: '50%',
-                              transform: 'translate(-50%, -50%)',
-                              fontSize: '0.7rem',
-                              fontWeight: 'bold',
-                              color: barWidth > 50 ? '#fff' : '#374151'
-                            }}>
-                              {Math.round(barWidth)}%
-                            </span>
+                          <div style={{ width: '100%', height: '20px', background: '#f3f4f6', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
+                            <div style={{ width: `${barWidth}%`, height: '100%', background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`, borderRadius: '10px', transition: 'width 0.6s ease' }} />
+                            <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '0.65rem', fontWeight: 'bold', color: barWidth > 50 ? '#fff' : '#374151' }}>{Math.round(barWidth)}%</span>
                           </div>
                         </td>
                       </tr>
@@ -508,7 +564,54 @@ export default function FiveSResults() {
                 </tbody>
               </table>
             </div>
+
+            {/* === Mobile Card Layout (hidden on desktop) === */}
+            <div className="ranking-cards-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {departmentRanking.map((dept, idx) => {
+                const rank = idx + 1;
+                const badge = getRankBadge(rank);
+                const barColor = getScoreBarColor(rank);
+                const maxScore = departmentRanking[0]?.totalScore || 1;
+                const barWidth = (dept.totalScore / maxScore) * 100;
+                const rowStyle = getRowStyle(rank);
+                return (
+                  <div key={dept.name} style={{
+                    ...rowStyle,
+                    borderRadius: '12px',
+                    padding: '0.85rem 1rem',
+                    border: `1px solid ${rowStyle.background && rowStyle.background !== '#fff' ? rowStyle.background : '#e5e7eb'}`,
+                    display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                  }}>
+                    {/* Row 1 — Rank + Name + Score + Photo */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                      <span style={{ display: 'inline-block', padding: '0.2rem 0.5rem', borderRadius: '9999px', background: badge.bg, color: badge.color, fontWeight: 'bold', fontSize: '0.8rem', flexShrink: 0 }}>
+                        {badge.icon} {rank}
+                      </span>
+                      <span style={{ fontWeight: 'bold', fontSize: '1rem', flex: 1 }}>{dept.name}</span>
+                      <span style={{ fontWeight: 'bold', fontSize: '1.3rem', color: barColor, flexShrink: 0 }}>{dept.totalScore}</span>
+                      {(dept.latestPhotos && dept.latestPhotos.length > 0) && (
+                        <button onClick={() => setGalleryPhotos(dept.latestPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#3b82f6', flexShrink: 0 }}>
+                          🔍 <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{dept.latestPhotos.length}</span>
+                        </button>
+                      )}
+                    </div>
+                    {/* Row 2 — Sub-scores */}
+                    <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.78rem', color: '#6b7280', flexWrap: 'wrap' }}>
+                      <span>🔄 เปลี่ยนแปลง: <strong style={{ color: '#374151' }}>{dept.totalImprovement}</strong></span>
+                      <span>🧹 สะอาด: <strong style={{ color: '#374151' }}>{dept.totalCleanliness}</strong></span>
+                      <span>💡 ท้าทาย: <strong style={{ color: '#374151' }}>{dept.totalInnovation}</strong></span>
+                      <span>📋 ตรวจ: <strong style={{ color: '#374151' }}>{dept.count} ครั้ง</strong></span>
+                    </div>
+                    {/* Row 3 — Bar */}
+                    <div style={{ height: '10px', background: '#f3f4f6', borderRadius: '5px', overflow: 'hidden' }}>
+                      <div style={{ width: `${barWidth}%`, height: '100%', background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`, borderRadius: '5px', transition: 'width 0.6s ease' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+
 
           {/* Score Legend */}
           <div className="card" style={{ marginBottom: '2rem' }}>
@@ -668,6 +771,7 @@ export default function FiveSResults() {
                           .update({
                             department_id: parseInt(editForm.department_id),
                             inspector_name: editForm.inspector_name,
+                            inspector_employee_id: editForm.inspector_employee_id ? parseInt(editForm.inspector_employee_id) : null,
                             inspection_date: editForm.inspection_date,
                             score_improvement: s1,
                             score_cleanliness: s2,
@@ -765,7 +869,16 @@ export default function FiveSResults() {
                           <tr key={ins.id}>
                             <td>{new Date(ins.inspection_date).toLocaleDateString('th-TH')}</td>
                             <td style={{ fontWeight: 'bold' }}>{ins.departments?.name || '-'}</td>
-                            <td>{ins.inspector_name}</td>
+                            <td>{
+                              // แสดงชื่อผู้ตรวจจาก Employee Master ถ้ามี ID เชื่อมโยง (ลด fallback เป็นชื่อที่บันทึกไว้)
+                              (() => {
+                                if (ins.inspector_employee_id) {
+                                  const emp = activeEmployees.find(e => e.id === ins.inspector_employee_id);
+                                  return emp ? `${emp.first_name} ${emp.last_name}` : ins.inspector_name;
+                                }
+                                return ins.inspector_name;
+                              })()
+                            }</td>
                             <td style={{ textAlign: 'center' }}>{ins.score_improvement}</td>
                             <td style={{ textAlign: 'center' }}>{ins.score_cleanliness}</td>
                             <td style={{ textAlign: 'center' }}>{ins.score_innovation}</td>
@@ -773,35 +886,19 @@ export default function FiveSResults() {
                             <td style={{ fontSize: '0.85rem', color: '#6b7280' }}>{ins.notes || '-'}</td>
                             <td style={{ textAlign: 'center' }}>
                               {(ins.photo_urls && ins.photo_urls.length > 0) ? (
-                                <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                  {ins.photo_urls.slice(0, 3).map((url, idx) => (
-                                    <img
-                                      key={idx}
-                                      src={url}
-                                      alt={`รูป ${idx + 1}`}
-                                      style={{
-                                        width: '36px', height: '36px',
-                                        objectFit: 'cover',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        border: '1px solid #e5e7eb'
-                                      }}
-                                      onClick={() => setLightboxUrl(url)}
-                                    />
-                                  ))}
-                                  {ins.photo_urls.length > 3 && (
-                                    <span style={{
-                                      width: '36px', height: '36px',
-                                      background: '#f3f4f6',
-                                      borderRadius: '6px',
-                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                      fontSize: '0.7rem', color: '#6b7280', fontWeight: 'bold',
-                                      cursor: 'pointer'
-                                    }}
-                                      onClick={() => setLightboxUrl(ins.photo_urls[3])}
-                                    >+{ins.photo_urls.length - 3}</span>
-                                  )}
-                                </div>
+                                <button
+                                  onClick={() => setGalleryPhotos(ins.photo_urls)}
+                                  style={{
+                                    background: 'none', border: '1px solid #e5e7eb',
+                                    borderRadius: '8px', cursor: 'pointer',
+                                    padding: '0.3rem 0.5rem', fontSize: '1rem',
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    color: '#3b82f6'
+                                  }}
+                                  title={`ดูรูป ${ins.photo_urls.length} รูป`}
+                                >
+                                  🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{ins.photo_urls.length}</span>
+                                </button>
                               ) : (
                                 <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
                               )}
@@ -868,6 +965,56 @@ export default function FiveSResults() {
               onClick={() => setLightboxUrl(null)}
             >✕</button>
             <img src={lightboxUrl} alt="ขยาย" className="photo-lightbox-img" />
+          </div>
+        </div>
+      )}
+
+      {/* Gallery Modal */}
+      {galleryPhotos && (
+        <div
+          onClick={() => setGalleryPhotos(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)',
+            zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem', animation: 'fadeIn 0.2s ease'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: '16px', padding: '1.5rem',
+              maxWidth: '680px', width: '100%', maxHeight: '90vh',
+              overflowY: 'auto', position: 'relative'
+            }}
+          >
+            <button
+              onClick={() => setGalleryPhotos(null)}
+              style={{
+                position: 'absolute', top: '0.75rem', right: '0.75rem',
+                background: '#f3f4f6', border: 'none', borderRadius: '50%',
+                width: '32px', height: '32px', cursor: 'pointer',
+                fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >✕</button>
+            <h3 style={{ marginBottom: '1rem', fontSize: '1.1rem', fontWeight: 'bold' }}>
+              📸 รูปภาพการตรวจ ({galleryPhotos.length} รูป)
+            </h3>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+              gap: '0.75rem'
+            }}>
+              {galleryPhotos.map((url, idx) => (
+                <div key={idx} style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer' }}
+                  onClick={() => { setLightboxUrl(url); setGalleryPhotos(null); }}>
+                  <img
+                    src={url}
+                    alt={`รูป ${idx + 1}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

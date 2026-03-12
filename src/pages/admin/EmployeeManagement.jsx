@@ -13,6 +13,8 @@ export default function EmployeeManagement() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  // Custom confirm dialog (replaces window.confirm to fix INP blocking issue)
+  const [confirmAction, setConfirmAction] = useState(null); // { emp, action, label }
 
   // Filter employees
   const filteredEmployees = employees.filter(emp => {
@@ -79,20 +81,29 @@ export default function EmployeeManagement() {
     }
   };
 
-  const handleToggleActive = async (emp) => {
+  // Step 1: Request confirmation (non-blocking — opens custom dialog)
+  const handleToggleActive = (emp) => {
     const isCurrentlyActive = emp.is_active !== false;
-    const action = isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน';
+    setConfirmAction({
+      emp,
+      isCurrentlyActive,
+      label: isCurrentlyActive ? 'ปิดใช้งาน' : 'เปิดใช้งาน'
+    });
+  };
 
-    if (window.confirm(`ยืนยัน${action}พนักงาน "${emp.first_name} ${emp.last_name}"?`)) {
-      const result = isCurrentlyActive
-        ? await deactivateEmployee(emp.id)
-        : await activateEmployee(emp.id);
-
-      if (!result.success) {
-        alert('Error: ' + result.error.message);
-      }
+  // Step 2: User clicked Confirm in the custom dialog
+  const handleConfirmToggle = async () => {
+    if (!confirmAction) return;
+    const { emp, isCurrentlyActive } = confirmAction;
+    setConfirmAction(null); // close dialog immediately
+    const result = isCurrentlyActive
+      ? await deactivateEmployee(emp.id)
+      : await activateEmployee(emp.id);
+    if (!result.success) {
+      alert('Error: ' + result.error.message);
     }
   };
+
 
   return (
     <div>
@@ -334,6 +345,46 @@ export default function EmployeeManagement() {
           </div>
         </div>
       )}
+
+      {/* Custom Confirm Dialog — replaces window.confirm (fixes INP blocking) */}
+      {confirmAction && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+            zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem'
+          }}
+          onClick={() => setConfirmAction(null)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: '16px', padding: '1.5rem',
+              maxWidth: '360px', width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+            }}
+          >
+            <div style={{ fontSize: '2rem', textAlign: 'center', marginBottom: '0.75rem' }}>
+              {confirmAction.isCurrentlyActive ? '⛔' : '✅'}
+            </div>
+            <h3 style={{ textAlign: 'center', marginBottom: '0.5rem', fontSize: '1.05rem' }}>
+              ยืนยัน{confirmAction.label}
+            </h3>
+            <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.9rem', marginBottom: '1.25rem' }}>
+              {confirmAction.emp.first_name} {confirmAction.emp.last_name}
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button className="btn btn-secondary" onClick={() => setConfirmAction(null)}>ยกเลิก</button>
+              <button
+                className={`btn ${confirmAction.isCurrentlyActive ? 'btn-danger' : 'btn-primary'}`}
+                onClick={handleConfirmToggle}
+              >
+                {confirmAction.label}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

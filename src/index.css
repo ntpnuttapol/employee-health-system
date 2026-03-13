@@ -2376,3 +2376,90 @@ a:hover {
     font-size: 0.8rem !important;
   }
 }
+
+/* Landscape orientation (768px+ width, height < 768px) */
+@media (min-width: 768px) and (max-height: 767px) and (orientation: landscape) {
+  /* More compact layout for landscape */
+  .page-header {
+    padding: 0.5rem !important;
+  }
+  
+  .page-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 0.15rem !important;
+  }
+  
+  .page-subtitle {
+    font-size: 0.75rem !important;
+    line-height: 1.1 !important;
+  }
+  
+  .card {
+    margin-bottom: 0.5rem !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Show table on landscape, hide cards */
+  .ranking-table-desktop {
+    display: block !important;
+  }
+  
+  .ranking-cards-mobile {
+    display: none !important;
+  }
+  
+  /* Compact filter */
+  .card > div > div {
+    gap: 0.4rem !important;
+  }
+  
+  .card > div > div:nth-child(2) {
+    margin-top: 0.3rem !important;
+  }
+  
+  /* Smaller buttons */
+  .btn {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Compact summary cards */
+  .card > div[style*="grid"] {
+    gap: 0.4rem !important;
+  }
+  
+  .card > div[style*="grid"] > div {
+    padding: 0.4rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* Compact legend */
+  .card h2 {
+    font-size: 0.9rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .card > div[style*="grid"] > div > div {
+    font-size: 0.75rem !important;
+  }
+  
+  /* Compact table for landscape */
+  .ranking-table-desktop table th,
+  .ranking-table-desktop table td {
+    padding: 0.4rem 0.3rem !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .ranking-table-desktop table th {
+    font-size: 0.75rem !important;
+  }
+  
+  .ranking-table-desktop table td span {
+    font-size: 0.9rem !important;
+  }
+  
+  .ranking-table-desktop table td button {
+    padding: 0.2rem 0.3rem !important;
+    font-size: 0.7rem !important;
+  }
+}

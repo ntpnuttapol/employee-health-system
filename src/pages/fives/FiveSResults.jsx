@@ -47,63 +47,41 @@ export default function FiveSResults() {
     setTimeout(stop, duration);
   }, []);
 
-  // ควบคุมการแสดงผล podium ตามลำดับ
+  // ควบคุมการแสดงผล podium — flat timeline ไม่ซ้อนกัน
   useEffect(() => {
-    if (showPodium && podiumStep === 0) {
-      // Countdown 5-1 (1 วินาทีต่อตัว)
-      const countdownTimers = [];
-      for (let i = 5; i >= 1; i--) {
-        const timer = setTimeout(() => {
-          setCountdown(i);
-          if (i === 1) {
-            // เมื่อ countdown เสร็จ ให้เริ่มแสดงอันดับ 3
-            setTimeout(() => {
-              setPodiumStep(1);
-              setCountdown(0);
-            }, 1000);
-          }
-        }, (6 - i) * 1000);
-        countdownTimers.push(timer);
-      }
-      
-      // แสดงอันดับ 3 พร้อม countdown 3-1
-      const timer3 = setTimeout(() => {
-        setPodiumStep(1);
-        setCountdown(3);
-        // Countdown 3-1 สำหรับอันดับ 3
-        setTimeout(() => setCountdown(2), 1000);
-        setTimeout(() => setCountdown(1), 2000);
-        setTimeout(() => {
-          setCountdown(0);
-          // ไปอันดับ 2
-          setTimeout(() => {
-            setPodiumStep(2);
-            setCountdown(2);
-            // Countdown 2-1 สำหรับอันดับ 2
-            setTimeout(() => setCountdown(1), 1000);
-            setTimeout(() => {
-              setCountdown(0);
-              // ไปอันดับ 1
-              setTimeout(() => {
-                setPodiumStep(3);
-                setCountdown(1);
-                // Countdown 1 สำหรับอันดับ 1
-                setTimeout(() => {
-                  setCountdown(0);
-                  // ยิงพลุเมื่อแสดงอันดับ 1
-                  setTimeout(fireConfetti, 500);
-                }, 1000);
-              }, 1000);
-            }, 2000);
-          }, 1000);
-        }, 3000);
-      }, 7000); // 6s countdown + 1s delay
-      
-      return () => {
-        countdownTimers.forEach(timer => clearTimeout(timer));
-        clearTimeout(timer3);
-      };
-    }
+    if (!showPodium) return;
+    const timers = [];
+    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    let t = 0;
+
+    // Countdown เริ่มต้น 5-4-3-2-1
+    at(t += 1000, () => setCountdown(5));
+    at(t += 1000, () => setCountdown(4));
+    at(t += 1000, () => setCountdown(3));
+    at(t += 1000, () => setCountdown(2));
+    at(t += 1000, () => setCountdown(1));
+
+    // แสดงอันดับ 3
+    at(t += 1000, () => { setCountdown(0); setPodiumStep(1); });
+
+    // Countdown สำหรับอันดับ 2: 3-2-1
+    at(t += 2000, () => setCountdown(3));
+    at(t += 1000, () => setCountdown(2));
+    at(t += 1000, () => setCountdown(1));
+
+    // แสดงอันดับ 2
+    at(t += 1000, () => { setCountdown(0); setPodiumStep(2); });
+
+    // Countdown สำหรับอันดับ 1: 3-2-1
+    at(t += 2000, () => setCountdown(3));
+    at(t += 1000, () => setCountdown(2));
+    at(t += 1000, () => setCountdown(1));
+
+    // แสดงอันดับ 1 + พลุ
+    at(t += 1000, () => { setCountdown(0); setPodiumStep(3); });
+    at(t += 500, () => fireConfetti());
+
+    return () => timers.forEach(clearTimeout);
   }, [showPodium, fireConfetti]);
   
   // Reset เมื่อปิด podium

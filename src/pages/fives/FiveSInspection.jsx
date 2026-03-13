@@ -43,22 +43,27 @@ export default function FiveSInspection() {
 
   const { user } = useAuth();
 
-  // Auto-fill inspector details based on logged-in user if linked to employee
+  // Auto-fill inspector details based on logged-in user
   useEffect(() => {
-    if (user && user.employees) {
-      setFormData(prev => ({
-        ...prev,
-        inspector_department_id: user.employees.department_id || '',
-        inspector_employee_id: String(user.employees.id || ''),
-        inspector_name: `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
-      }));
+    if (user) {
+      if (user.employees) {
+        setFormData(prev => ({
+          ...prev,
+          inspector_department_id: user.employees.department_id || '',
+          inspector_employee_id: String(user.employees.id || ''),
+          inspector_name: `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          inspector_name: user.full_name || user.username || ''
+        }));
+      }
     }
   }, [user]);
 
-  // กรองพนักงานตามแผนกที่เลือก
-  const inspectorList = formData.inspector_department_id
-    ? activeEmployees.filter(e => String(e.department_id) === String(formData.inspector_department_id))
-    : [];
+  // ชื่อแผนกผู้ตรวจ (แสดงผลอย่างเดียว)
+  const inspectorDeptName = user?.employees?.departments?.name || '';
 
   // ดึงข้อมูลการตรวจของวันที่เลือก
   const selectedDate = formData.inspection_date || '';
@@ -379,50 +384,29 @@ export default function FiveSInspection() {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label className="form-label required">แผนกผู้ตรวจ</label>
-                <select
-                  className="form-select"
-                  value={formData.inspector_department_id}
-                  onChange={(e) => setFormData({ ...formData, inspector_department_id: e.target.value, inspector_name: '' })}
-                  required
-                  disabled={masterLoading || !!user?.employees?.department_id}
-                >
-                  <option value="">-- เลือกแผนกผู้ตรวจ --</option>
-                  {filteredDepartments
-                    .filter(dept => !formData.department_id || String(dept.id) !== String(formData.department_id))
-                    .map(dept => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
-                    ))}
-                </select>
-                {user?.employees?.department_id && formData.inspector_department_id === String(user.employees.department_id) && (
-                  <div style={{ fontSize: '0.8rem', color: '#10b981', marginTop: '0.25rem' }}>✓ เลือกจากข้อมูลของคุณอัตโนมัติ</div>
-                )}
-              </div>
-              <div className="form-group">
-                <label className="form-label required">ชื่อผู้ตรวจ</label>
-                <select
-                  className="form-select"
-                  value={formData.inspector_employee_id}
-                  onChange={(e) => {
-                    const selected = inspectorList.find(emp => String(emp.id) === e.target.value);
-                    setFormData({
-                      ...formData,
-                      inspector_employee_id: e.target.value,
-                      inspector_name: selected ? `${selected.first_name} ${selected.last_name}`.trim() : ''
-                    });
-                  }}
-                  required
-                  disabled={!formData.inspector_department_id || !!user?.employees?.department_id}
-                >
-                  <option value="">{formData.inspector_department_id ? '-- เลือกผู้ตรวจ --' : '-- เลือกแผนกก่อน --'}</option>
-                  {inspectorList.map(emp => (
-                    <option key={emp.id} value={String(emp.id)}>
-                      {emp.first_name} {emp.last_name}
-                    </option>
-                  ))}
-                </select>
+            {/* ข้อมูลผู้ตรวจ — ล็อกตาม User ที่ Login */}
+            <div style={{
+              padding: '1rem 1.25rem',
+              background: 'var(--color-primary-light)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--color-primary)',
+              marginBottom: '1rem'
+            }}>
+              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>ผู้ตรวจ (ล็อกตาม User ที่ Login)</div>
+              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '1.25rem' }}>👤</span>
+                  <div>
+                    <div style={{ fontWeight: 600, color: 'var(--color-text-primary)', fontSize: '1rem' }}>
+                      {formData.inspector_name || user?.full_name || user?.username || '-'}
+                    </div>
+                    {inspectorDeptName && (
+                      <div style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)' }}>
+                        แผนก: {inspectorDeptName}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

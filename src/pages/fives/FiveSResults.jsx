@@ -396,11 +396,11 @@ ${deptSections}
             style={{
               padding: '0.75rem 2.5rem',
               fontSize: '1.1rem',
-              background: 'linear-gradient(135deg, #a8d5ba, #8bc4a6, #c4e5d1)',
+              background: 'var(--color-primary)',
               border: 'none',
-              borderRadius: '12px',
+              borderRadius: '10px',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(168, 213, 186, 0.4)'
+              boxShadow: '0 4px 12px rgba(46, 204, 135, 0.3)'
             }}
           >
             📊 ดูอันดับคะแนนทั้งหมด
@@ -686,15 +686,15 @@ ${deptSections}
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
-                  <tr style={{ background: '#a8d5ba', color: 'white' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>อันดับ</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #a8d5ba' }}>แผนก</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>เปลี่ยนแปลง</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>สะอาด</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>ท้าทาย</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>คะแนนรวม</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>รูป</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>ครั้ง</th>
+                  <tr style={{ background: '#6dcba1', color: 'white' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>อันดับ</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #6dcba1' }}>แผนก</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>เปลี่ยนแปลง</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>สะอาด</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ท้าทาย</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>คะแนนรวม</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>รูป</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ครั้ง</th>
                   </tr>
                 </thead>
                 <tbody>

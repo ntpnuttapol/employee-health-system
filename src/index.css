@@ -1,56 +1,56 @@
 /* ========================================
    Employee Health & Activity System
-   Cloud Pastel Blue-White Theme
+   Earthtone Pastel Theme - Mint Green
    ======================================== */
 
 :root {
-  /* Cloud Primary - Soft Sky Blue */
-  --color-primary: #7eb8dc;
-  --color-primary-dark: #5aa8d4;
-  --color-primary-light: #d4e9f7;
+  /* Earthtone Primary - Soft Mint Green */
+  --color-primary: #a8d5ba;
+  --color-primary-dark: #8bc4a6;
+  --color-primary-light: #d4ede2;
 
-  /* Cloud Secondary - Very Light Blue */
-  --color-secondary: #aed5ef;
-  --color-secondary-dark: #8cc5e8;
-  --color-secondary-light: #e0f1fc;
+  /* Earthtone Secondary - Sage Green */
+  --color-secondary: #c4e5d1;
+  --color-secondary-dark: #b0dcc5;
+  --color-secondary-light: #e1f3e6;
 
-  /* Cloud Accent - Soft Periwinkle */
-  --color-accent: #b8d4f0;
-  --color-accent-dark: #9bc4ea;
-  --color-accent-light: #e5f0fa;
+  /* Earthtone Accent - Soft Olive */
+  --color-accent: #d4e8cc;
+  --color-accent-dark: #c5ddbb;
+  --color-accent-light: #e5f2dd;
 
-  /* Warm accent for highlights */
-  --color-warm: #a8d8f0;
-  --color-warm-dark: #8acbe8;
-  --color-warm-light: #d8eef8;
+  /* Warm accent for highlights - Terracotta */
+  --color-warm: #e8b4a0;
+  --color-warm-dark: #dda08f;
+  --color-warm-light: #f5d4c8;
 
-  /* Cloud Neutrals - White with blue tint */
-  --color-bg-primary: #fafcff;
-  --color-bg-secondary: #f5f9fc;
-  --color-bg-tertiary: #ecf4fa;
+  /* Earthtone Neutrals - Warm Cream */
+  --color-bg-primary: #f8f7f4;
+  --color-bg-secondary: #f2f0ea;
+  --color-bg-tertiary: #ebe8dc;
   --color-bg-card: #ffffff;
 
-  /* Text - Darker for better contrast */
-  --color-text-primary: #2c3e50;
-  --color-text-secondary: #4a6278;
-  --color-text-muted: #7a92a5;
-  --color-text-light: #b0c4d4;
+  /* Text - Warm Dark Gray */
+  --color-text-primary: #3a3a35;
+  --color-text-secondary: #5a5a52;
+  --color-text-muted: #7a7a6f;
+  --color-text-light: #9a9a8d;
 
-  /* Borders - Very Light */
-  --color-border: #dce8f0;
-  --color-border-light: #eef4f8;
+  /* Borders - Earthtone Light */
+  --color-border: #d4d0c7;
+  --color-border-light: #e8e5de;
 
-  /* Status Colors */
-  --color-success: #6ec9b8;
-  --color-warning: #f5c76d;
-  --color-error: #e88888;
-  --color-info: #7eb8dc;
+  /* Status Colors - Earthtone Palette */
+  --color-success: #8bc4a6;
+  --color-warning: #e8b4a0;
+  --color-error: #e8a8a0;
+  --color-info: #a8d5ba;
 
-  /* Shadows - Softer blue tint */
-  --shadow-sm: 0 1px 3px rgba(44, 62, 80, 0.05);
-  --shadow-md: 0 2px 10px rgba(44, 62, 80, 0.08);
-  --shadow-lg: 0 4px 20px rgba(44, 62, 80, 0.1);
-  --shadow-xl: 0 8px 30px rgba(44, 62, 80, 0.12);
+  /* Shadows - Earthtone Warm */
+  --shadow-sm: 0 1px 3px rgba(58, 58, 53, 0.05);
+  --shadow-md: 0 2px 10px rgba(58, 58, 53, 0.08);
+  --shadow-lg: 0 4px 20px rgba(58, 58, 53, 0.1);
+  --shadow-xl: 0 8px 30px rgba(58, 58, 53, 0.12);
 
   /* Spacing - Generous */
   --spacing-xs: 0.375rem;
@@ -128,14 +128,14 @@ a:hover {
   /* Changed from 260px to match collapsed width */
   min-height: 100vh;
   transition: margin-left var(--transition-normal);
-  /* Floating Orb Cloud Background */
+  /* Floating Orb Earthtone Background */
   background:
-    radial-gradient(ellipse 80% 50% at 10% 20%, rgba(126, 184, 220, 0.12) 0%, transparent 50%),
-    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(174, 213, 239, 0.1) 0%, transparent 45%),
-    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(184, 212, 240, 0.06) 0%, transparent 40%),
-    radial-gradient(ellipse 40% 30% at 80% 20%, rgba(168, 216, 240, 0.08) 0%, transparent 35%),
-    radial-gradient(ellipse 45% 35% at 20% 80%, rgba(174, 213, 239, 0.07) 0%, transparent 40%),
-    linear-gradient(180deg, #fafcff 0%, #f0f7fc 50%, #fafcff 100%);
+    radial-gradient(ellipse 80% 50% at 10% 20%, rgba(168, 213, 186, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 90% 80%, rgba(196, 229, 209, 0.1) 0%, transparent 45%),
+    radial-gradient(ellipse 50% 60% at 50% 50%, rgba(212, 232, 204, 0.06) 0%, transparent 40%),
+    radial-gradient(ellipse 40% 30% at 80% 20%, rgba(232, 184, 160, 0.08) 0%, transparent 35%),
+    radial-gradient(ellipse 45% 35% at 20% 80%, rgba(212, 232, 204, 0.07) 0%, transparent 40%),
+    linear-gradient(180deg, #f8f7f4 0%, #f2f0ea 50%, #f8f7f4 100%);
   background-attachment: fixed;
 }
 
@@ -159,13 +159,13 @@ a:hover {
   height: 100vh;
   background: linear-gradient(180deg,
       #ffffff 0%,
-      #f8fbff 100%);
+      #f8f7f4 100%);
   color: var(--color-text-primary);
   padding: var(--spacing-lg) var(--spacing-md);
   display: flex;
   flex-direction: column;
   z-index: 100;
-  box-shadow: 0 0 30px rgba(126, 184, 220, 0.15);
+  box-shadow: 0 0 30px rgba(168, 213, 186, 0.15);
   border-right: 1px solid var(--color-border);
   transition: width var(--transition-normal);
   overflow-x: hidden;
@@ -197,7 +197,7 @@ a:hover {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-primary-dark);
-  background: linear-gradient(135deg, #5aa8d4 0%, #7eb8dc 100%);
+  background: linear-gradient(135deg, #8bc4a6 0%, #a8d5ba 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -302,7 +302,7 @@ a:hover {
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(126, 184, 220, 0.4);
+  box-shadow: 0 2px 8px rgba(168, 213, 186, 0.4);
 }
 
 .sidebar-link-icon {
@@ -1806,7 +1806,7 @@ a:hover {
 
 .chart-container {
   background: linear-gradient(180deg,
-      rgba(142, 200, 232, 0.05) 0%,
+      rgba(168, 213, 186, 0.05) 0%,
       transparent 100%);
   border-radius: var(--radius-md);
   padding: 1rem;
@@ -1815,7 +1815,7 @@ a:hover {
 
 .chart-container:hover {
   background: linear-gradient(180deg,
-      rgba(142, 200, 232, 0.1) 0%,
+      rgba(168, 213, 186, 0.1) 0%,
       transparent 100%);
 }
 

@@ -27,6 +27,7 @@ export default function FiveSResults() {
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
+  const [showRankingPopup, setShowRankingPopup] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [galleryPhotos, setGalleryPhotos] = useState(null);
 
@@ -364,23 +365,23 @@ ${deptSections}
         </div>
       )}
 
-      {/* ปุ่มเปิด Podium Popup */}
-      {departmentRanking.length >= 3 && (
+      {/* ปุ่มเปิด Popup ดูคะแนน */}
+      {departmentRanking.length > 0 && (
         <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <button
             className="btn btn-primary btn-lg"
+            onClick={() => setShowRankingPopup(true)}
             style={{
               padding: '0.75rem 2.5rem',
               fontSize: '1.1rem',
-              background: 'linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6)',
+              background: 'linear-gradient(135deg, #a8d5ba, #8bc4a6, #c4e5d1)',
               border: 'none',
               borderRadius: '12px',
               cursor: 'pointer',
-              boxShadow: '0 4px 15px rgba(239,68,68,0.4)'
+              boxShadow: '0 4px 15px rgba(168, 213, 186, 0.4)'
             }}
-            onClick={() => { setShowPodium(true); setTimeout(fireConfetti, 300); }}
           >
-            🏆 ประกาศอันดับ Top 3
+            📊 ดูอันดับคะแนนทั้งหมด
           </button>
         </div>
       )}
@@ -501,14 +502,122 @@ ${deptSections}
         </div>
       )}
 
+      {/* Ranking Popup Modal */}
+      {showRankingPopup && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, animation: 'fadeIn 0.3s ease'
+          }}
+          onClick={() => setShowRankingPopup(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '1.5rem',
+              padding: '2rem',
+              maxWidth: '95vw',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+          >
+            <button
+              style={{
+                position: 'absolute', top: '1rem', right: '1rem',
+                background: 'rgba(0,0,0,0.1)', border: 'none',
+                color: '#666', fontSize: '1.2rem', cursor: 'pointer',
+                borderRadius: '50%', width: '36px', height: '36px'
+              }}
+              onClick={() => setShowRankingPopup(false)}
+            >✕</button>
+
+            <div style={{ fontSize: '1.5rem', color: '#3a3a35', fontWeight: 'bold', marginBottom: '1.5rem', textAlign: 'center' }}>
+              📊 อันดับคะแนน 5ส ทุกแผนก
+            </div>
+            <div style={{ fontSize: '0.9rem', color: '#7a7a6f', marginBottom: '1.5rem', textAlign: 'center' }}>
+              {filterDate
+                ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+                : 'ข้อมูลทั้งหมด'}
+            </div>
+
+            {/* Ranking Table in Popup */}
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ background: '#a8d5ba', color: 'white' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>อันดับ</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', border: '1px solid #a8d5ba' }}>แผนก</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>เปลี่ยนแปลง</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>สะอาด</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>ท้าทาย</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>คะแนนรวม</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>รูป</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #a8d5ba' }}>ครั้ง</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((dept, idx) => {
+                    const rank = idx + 1;
+                    const barWidth = (dept.totalScore / 30) * 100;
+                    const barColor = dept.totalScore >= 27 ? '#16a34a' : dept.totalScore >= 21 ? '#3b82f6' : dept.totalScore >= 15 ? '#f59e0b' : '#ef4444';
+                    const badge = rank <= 3 ? { icon: '🏆', color: '#16a34a', bg: '#dcfce7' } : { icon: `${rank}`, color: '#6b7280', bg: '#f3f4f6' };
+                    return (
+                      <tr key={dept.id} style={{
+                        background: rank <= 3 ? badge.bg : 'white',
+                        borderBottom: '1px solid #e5e7eb'
+                      }}>
+                        <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 'bold' }}>
+                          <span style={{ display: 'inline-block', padding: '0.25rem 0.5rem', borderRadius: '9999px', background: badge.bg, color: badge.color, fontSize: '0.8rem' }}>
+                            {badge.icon} {rank}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.75rem', fontWeight: 'bold' }}>{dept.name}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalImprovement}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalCleanliness}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalInnovation}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: barColor }}>{dept.totalScore}</span>
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          {(dept.allPhotos && dept.allPhotos.length > 0) ? (
+                            <button onClick={(e) => { e.stopPropagation(); setGalleryPhotos(dept.allPhotos); setShowRankingPopup(false); }} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.9rem', color: '#3b82f6' }}>
+                              🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{dept.allPhotos.length}</span>
+                            </button>
+                          ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.count} ครั้ง</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowRankingPopup(false)}
+                style={{ padding: '0.5rem 1.5rem' }}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {departmentRanking.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
           ยังไม่มีข้อมูลการตรวจ 5ส
         </div>
       ) : (
         <>
-          {/* Full Ranking Table */}
-          <div className="card" style={{ marginBottom: '1rem' }}>
+          {/* Ranking Table - Hidden by default, shown in popup */}
+          <div className="card" style={{ marginBottom: '1rem', display: 'none' }}>
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📋 ตารางอันดับทุกแผนก</h2>
 
             {/* === Desktop Table (hidden on mobile) === */}

@@ -1004,16 +1004,29 @@ ${deptSections}
               gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
               gap: '0.75rem'
             }}>
-              {galleryPhotos.map((url, idx) => (
-                <div key={idx} style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer' }}
-                  onClick={() => { setLightboxUrl(url); setGalleryPhotos(null); }}>
-                  <img
-                    src={url}
-                    alt={`รูป ${idx + 1}`}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </div>
-              ))}
+              {galleryPhotos.map((url, idx) => {
+                const ext = String(url).split('.').pop().split('?')[0].toLowerCase();
+                const isHeic = ['heic', 'heif'].includes(ext);
+                return (
+                  <div key={idx} style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    onClick={() => { if (!isHeic) { setLightboxUrl(url); setGalleryPhotos(null); } }}>
+                    {isHeic ? (
+                      <div style={{ textAlign: 'center', padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                        <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📷</div>
+                        <div>ไฟล์ HEIC</div>
+                        <a href={url} download style={{ color: '#3b82f6', fontSize: '0.7rem' }}>ดาวน์โหลด</a>
+                      </div>
+                    ) : (
+                      <img
+                        src={url}
+                        alt={`รูป ${idx + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="text-align:center;padding:0.5rem;font-size:0.75rem;color:#6b7280"><div style="font-size:2rem">⚠️</div>โหลดรูปไม่ได้</div>'; }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

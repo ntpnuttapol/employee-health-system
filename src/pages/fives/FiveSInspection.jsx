@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { useAuth } from '../../contexts/AuthContext';
+import heic2any from 'heic2any';
 
 export default function FiveSInspection() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
@@ -120,7 +121,7 @@ export default function FiveSInspection() {
   };
 
   // ---- Photo Handlers ----
-  const handlePhotoSelect = (e) => {
+  const handlePhotoSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
     const remaining = 20 - photos.length;
@@ -128,14 +129,29 @@ export default function FiveSInspection() {
       alert('แนบรูปได้สูงสุด 20 รูป');
       return;
     }
-    const toAdd = files.slice(0, remaining).map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-      id: `${Date.now()}-${Math.random()}`
-    }));
+    const selected = files.slice(0, remaining);
+    const toAdd = [];
+    for (const file of selected) {
+      const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+        || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+      let finalFile = file;
+      if (isHeic) {
+        try {
+          const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+          finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), { type: 'image/jpeg' });
+        } catch (err) {
+          console.error('HEIC conversion failed:', err);
+        }
+      }
+      toAdd.push({
+        file: finalFile,
+        preview: URL.createObjectURL(finalFile),
+        id: `${Date.now()}-${Math.random()}`
+      });
+    }
     setPhotos(prev => [...prev, ...toAdd]);
     // Reset input value so same file can be re-selected
-    e.target.value = '';
+    if (e.target) e.target.value = '';
   };
 
   const removePhoto = (id) => {

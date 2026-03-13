@@ -560,11 +560,10 @@ ${deptSections}
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((dept, idx) => {
+                  {departmentRanking.map((dept, idx) => {
                     const rank = idx + 1;
-                    const barWidth = (dept.totalScore / 30) * 100;
+                    const badge = getRankBadge(rank);
                     const barColor = dept.totalScore >= 27 ? '#16a34a' : dept.totalScore >= 21 ? '#3b82f6' : dept.totalScore >= 15 ? '#f59e0b' : '#ef4444';
-                    const badge = rank <= 3 ? { icon: '🏆', color: '#16a34a', bg: '#dcfce7' } : { icon: `${rank}`, color: '#6b7280', bg: '#f3f4f6' };
                     return (
                       <tr key={dept.id} style={{
                         background: rank <= 3 ? badge.bg : 'white',
@@ -597,7 +596,24 @@ ${deptSections}
               </table>
             </div>
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              {departmentRanking.length >= 3 && (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setShowRankingPopup(false); setShowPodium(true); setTimeout(fireConfetti, 300); }}
+                  style={{
+                    padding: '0.5rem 1.5rem',
+                    background: 'linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    color: 'white',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  🏆 ประกาศอันดับ Top 3
+                </button>
+              )}
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowRankingPopup(false)}

@@ -66,25 +66,45 @@ export default function FiveSResults() {
         countdownTimers.push(timer);
       }
       
-      // แสดงอันดับ 2 หลังจากอันดับ 3 อีก 10 วินาที
-      const timer2 = setTimeout(() => {
-        setPodiumStep(2);
-      }, 17000); // 6s countdown + 1s delay + 10s wait
-      
-      // แสดงอันดับ 1 หลังจากอันดับ 2 อีก 10 วินาที
+      // แสดงอันดับ 3 พร้อม countdown 3-1
       const timer3 = setTimeout(() => {
-        setPodiumStep(3);
-        // ยิงพลุเมื่อแสดงอันดับ 1
-        setTimeout(fireConfetti, 500);
-      }, 27000); // +10s อีก
+        setPodiumStep(1);
+        setCountdown(3);
+        // Countdown 3-1 สำหรับอันดับ 3
+        setTimeout(() => setCountdown(2), 1000);
+        setTimeout(() => setCountdown(1), 2000);
+        setTimeout(() => {
+          setCountdown(0);
+          // ไปอันดับ 2
+          setTimeout(() => {
+            setPodiumStep(2);
+            setCountdown(2);
+            // Countdown 2-1 สำหรับอันดับ 2
+            setTimeout(() => setCountdown(1), 1000);
+            setTimeout(() => {
+              setCountdown(0);
+              // ไปอันดับ 1
+              setTimeout(() => {
+                setPodiumStep(3);
+                setCountdown(1);
+                // Countdown 1 สำหรับอันดับ 1
+                setTimeout(() => {
+                  setCountdown(0);
+                  // ยิงพลุเมื่อแสดงอันดับ 1
+                  setTimeout(fireConfetti, 500);
+                }, 1000);
+              }, 1000);
+            }, 2000);
+          }, 1000);
+        }, 3000);
+      }, 7000); // 6s countdown + 1s delay
       
       return () => {
         countdownTimers.forEach(timer => clearTimeout(timer));
-        clearTimeout(timer2);
         clearTimeout(timer3);
       };
     }
-  }, [showPodium, fireConfetti]); // ลบ podiumStep ออกจาก dependency
+  }, [showPodium, fireConfetti]);
   
   // Reset เมื่อปิด podium
   useEffect(() => {
@@ -504,8 +524,16 @@ ${deptSections}
                 textAlign: 'center', 
                 marginBottom: '2rem',
                 animation: 'pulse 1s ease-in-out infinite',
-                textShadow: '0 0 20px rgba(255, 107, 107, 0.5)'
+                textShadow: '0 0 20px rgba(255, 107, 107, 0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center'
               }}>
+                <div>
+                  {podiumStep === 1 && '🥉'}
+                  {podiumStep === 2 && '🥈'}
+                  {podiumStep === 3 && '🥇'}
+                </div>
                 {countdown}
               </div>
             )}

@@ -289,7 +289,7 @@ ${deptSections}
       </div>
 
       {/* Filter */}
-      <div className="card" style={{ marginBottom: '1.5rem' }}>
+      <div className="card" style={{ marginBottom: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
           <label style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>เลือกวันที่ตรวจ:</label>
           <input
@@ -338,8 +338,8 @@ ${deptSections}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '1rem',
-          marginBottom: '1.5rem'
+          gap: '0.75rem',
+          marginBottom: '1rem'
         }}>
           {[
             { label: 'จำนวนการตรวจ', value: filtered.length, unit: 'รายการ', color: '#6366f1', bg: '#eef2ff' },
@@ -366,7 +366,7 @@ ${deptSections}
 
       {/* ปุ่มเปิด Podium Popup */}
       {departmentRanking.length >= 3 && (
-        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
           <button
             className="btn btn-primary btn-lg"
             style={{
@@ -422,14 +422,14 @@ ${deptSections}
             <div style={{ fontSize: '1.5rem', color: '#ffd700', fontWeight: 'bold', marginBottom: '0.25rem' }}>
               🎉 ประกาศผลอันดับ 5ส 🎉
             </div>
-            <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '2rem' }}>
+            <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '1rem' }}>
               {filterDate
                 ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
                 : 'ข้อมูลทั้งหมด'}
             </div>
 
             {/* Podium */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
               {/* 2nd Place */}
               <div style={{ flex: 1, maxWidth: '180px', animation: 'slideUp 0.6s ease 0.3s both' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🥈</div>
@@ -508,7 +508,7 @@ ${deptSections}
       ) : (
         <>
           {/* Full Ranking Table */}
-          <div className="card" style={{ marginBottom: '2rem' }}>
+          <div className="card" style={{ marginBottom: '1rem' }}>
             <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📋 ตารางอันดับทุกแผนก</h2>
 
             {/* === Desktop Table (hidden on mobile) === */}
@@ -619,7 +619,7 @@ ${deptSections}
 
 
           {/* Score Legend */}
-          <div className="card" style={{ marginBottom: '2rem' }}>
+          <div className="card" style={{ marginBottom: '1rem' }}>
             <h2 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>📌 เกณฑ์การให้คะแนน</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
               <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#dcfce7', border: '1px solid #16a34a' }}>

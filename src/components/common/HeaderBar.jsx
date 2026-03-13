@@ -224,30 +224,27 @@ export default function HeaderBar() {
       </div>
 
       {/* User Profile */}
-      <div className="header-profile" ref={profileRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.75rem', marginLeft: '0.5rem', cursor: 'pointer', padding: '0.5rem', borderRadius: 'var(--radius-md)', transition: 'background var(--transition-fast)' }} onClick={() => setShowProfileMenu(!showProfileMenu)} onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
-        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>
+      <div className="header-profile" ref={profileRef} onClick={() => setShowProfileMenu(!showProfileMenu)}>
+        <div className="header-profile-avatar">
           {user?.full_name?.charAt(0) || user?.username?.charAt(0) || 'U'}
         </div>
-        <div style={{ flexDirection: 'column' }} className="header-user-info-desktop">
-          <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--color-text-primary)', lineHeight: 1.2 }}>{user?.full_name || user?.username || 'ผู้ใช้งาน'}</span>
-          <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', lineHeight: 1.2 }}>{user?.role === 'Admin' ? '👑 Admin' : '👤 User'}</span>
+        <div className="header-user-info-desktop">
+          <span className="header-profile-name">{user?.full_name || user?.username || 'ผู้ใช้งาน'}</span>
+          <span className="header-profile-role">{user?.role === 'Admin' ? '👑 Admin' : '👤 User'}</span>
         </div>
+        <span className="header-profile-caret">{showProfileMenu ? '▴' : '▾'}</span>
 
         {showProfileMenu && (
-          <div style={{ position: 'absolute', top: '100%', right: '0', marginTop: '0.5rem', background: 'white', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', minWidth: '160px', zIndex: 1000, overflow: 'hidden', border: '1px solid var(--color-border)' }} onClick={(e) => e.stopPropagation()}>
+          <div className="header-profile-menu" onClick={(e) => e.stopPropagation()}>
             <div
-              style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--color-text-primary)', borderBottom: '1px solid var(--color-border)', cursor: 'pointer', fontSize: '0.9rem', transition: 'background var(--transition-fast)' }}
+              className="header-profile-menu-item"
               onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-bg-secondary)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               ⚙️ <span>โปรไฟล์</span>
             </div>
             <div
-              style={{ padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem', transition: 'background var(--transition-fast)' }}
+              className="header-profile-menu-item danger"
               onClick={() => { setShowProfileMenu(false); logout(); navigate('/login'); }}
-              onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               🚪 <span>ออกจากระบบ</span>
             </div>

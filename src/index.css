@@ -94,6 +94,12 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   font-family:
     "Prompt",
@@ -105,12 +111,16 @@ body {
   color: var(--color-text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -132,6 +142,7 @@ a:hover {
 .app-container {
   display: flex;
   min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
 }
 
@@ -140,8 +151,10 @@ a:hover {
   padding: 2rem 2rem 2.5rem;
   margin-left: 304px;
   min-height: 100vh;
+  min-height: 100dvh;
   transition: margin-left var(--transition-normal), padding var(--transition-normal);
   background: var(--color-bg-primary);
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 768px) {
@@ -1583,168 +1596,398 @@ a:hover {
 }
 
 /* ========================================
-   Mobile Responsive Styles
+   Apple-Style Mobile Responsive
    ======================================== */
 
- .mobile-menu-btn {
+.mobile-menu-btn {
   display: none;
   position: fixed;
-  top: 1rem;
-  left: 1rem;
+  top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  left: calc(0.75rem + env(safe-area-inset-left, 0px));
   z-index: 1001;
-  width: 46px;
-  height: 46px;
-  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   border: none;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
   cursor: pointer;
-  box-shadow: 0 16px 28px rgba(109, 203, 161, 0.28);
+  box-shadow: 0 6px 20px rgba(109, 203, 161, 0.35);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+}
+
+.mobile-menu-btn:active {
+  transform: scale(0.9);
 }
 
 .mobile-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(30, 41, 36, 0.38);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.32);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
   z-index: 110;
+  opacity: 0;
+  animation: appleBackdropIn 0.28s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
+@keyframes appleBackdropIn {
+  to { opacity: 1; }
+}
+
+/* ---- Touch targets: all interactive ≥ 44px ---- */
+@media (pointer: coarse) {
+  .btn,
+  .sidebar-link,
+  .notification-bell,
+  .header-profile,
+  .mobile-menu-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ===========================
+   MOBILE  (≤ 768px)
+   =========================== */
 @media (max-width: 768px) {
+
+  /* ---- Prevent rubber-band / overflow ---- */
+  body,
+  #root {
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
+
+  /* ---- Show mobile menu button ---- */
   .mobile-menu-btn {
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
+  /* ---- Sidebar — iOS-like slide-over sheet ---- */
   .sidebar {
-    left: 14px;
-    top: 14px;
-    width: min(288px, calc(100vw - 28px));
-    height: calc(100vh - 28px);
-    transform: translateX(calc(-100% - 24px));
-    transition: transform 0.28s ease;
+    left: 0;
+    top: 0;
+    width: min(300px, 82vw);
+    height: 100vh;
+    height: 100dvh;
+    border-radius: 0 28px 28px 0;
+    padding-top: calc(1.25rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(1.25rem + env(safe-area-inset-left, 0px));
+    transform: translateX(-105%);
+    transition: transform 0.38s cubic-bezier(0.32, 0.72, 0, 1);
+    box-shadow: none;
   }
 
   .sidebar.mobile-open {
     transform: translateX(0);
+    box-shadow: 16px 0 48px rgba(0, 0, 0, 0.16);
   }
 
+  /* ---- Main content ---- */
   .main-content {
     margin-left: 0;
-    padding: 4.6rem 1rem 1rem;
+    padding: calc(4rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
+  /* ---- Header bar compact ---- */
   .header-bar {
-    padding: 0.75rem;
-    gap: 0.75rem;
+    padding: 0.65rem 0.75rem;
+    gap: 0.6rem;
+    border-radius: 20px;
+    margin-bottom: 1rem;
   }
 
   .header-search {
     max-width: none;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .header-search .search-input {
+    padding: 0.75rem 0.85rem 0.75rem 2.5rem;
+    border-radius: 14px;
+    font-size: 16px; /* prevent iOS zoom */
   }
 
   .header-user-info-desktop,
   .header-profile-caret {
-    display: none;
+    display: none !important;
   }
 
+  .header-profile {
+    padding: 0.3rem;
+  }
+
+  .header-profile-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .notification-bell {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+  }
+
+  /* ---- Dropdowns — bottom-sheet style ---- */
   .notifications-dropdown,
   .header-profile-menu {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
     right: 0;
-    width: min(320px, calc(100vw - 2rem));
+    width: 100%;
+    max-height: 65vh;
+    border-radius: 24px 24px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    animation: appleSlideUp 0.36s cubic-bezier(0.32, 0.72, 0, 1);
   }
 
+  @keyframes appleSlideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+
+  /* ---- Page header ---- */
   .page-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-title {
+    font-size: 1.55rem;
+    letter-spacing: -0.03em;
+  }
+
+  .page-subtitle {
+    font-size: 0.88rem;
   }
 
   .page-header-actions {
     width: 100%;
+    display: flex;
     flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
+  .page-header-actions .btn {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  /* ---- Cards — Apple-rounded ---- */
   .card {
     padding: 1rem;
-    border-radius: 24px;
+    border-radius: 22px;
+    margin-bottom: 0.75rem;
+  }
+
+  .card:hover {
+    transform: none;
+    box-shadow: 0 18px 40px rgba(28, 54, 44, 0.06);
   }
 
   .card-header {
     flex-direction: column;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.6rem;
   }
 
+  /* ---- Stats Grid — 2-col on mobile ---- */
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.75rem;
+    gap: 0.65rem;
   }
 
   .stat-card {
+    padding: 0.85rem;
+    border-radius: 20px;
+    flex-direction: column;
     align-items: flex-start;
+    gap: 0.65rem;
+  }
+
+  .stat-card:hover {
+    transform: none;
+  }
+
+  .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    font-size: 1.2rem;
   }
 
   .stat-value {
-    font-size: 1.45rem;
+    font-size: 1.4rem;
+  }
+
+  .stat-label {
+    font-size: 0.82rem;
+  }
+
+  /* ---- Tables — horizontal scroll ---- */
+  .table-container {
+    border-radius: 20px;
+    -webkit-overflow-scrolling: touch;
   }
 
   .table {
-    min-width: 620px;
+    min-width: 600px;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.6rem 0.5rem;
+    font-size: 0.85rem;
   }
 
   .table-actions {
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.3rem;
+  }
+
+  /* ---- Forms — iOS-friendly ---- */
+  .form-group {
+    margin-bottom: 0.85rem;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    font-size: 16px; /* prevents iOS auto-zoom */
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
   }
 
   .form-row,
   .search-bar {
     grid-template-columns: 1fr;
     flex-direction: column;
+    gap: 0.65rem;
   }
 
-  .form-input,
-  .form-select,
-  .form-textarea {
-    font-size: 16px;
+  /* ---- Buttons — pill-shaped touch ---- */
+  .btn {
+    padding: 0.7rem 1rem;
+    font-size: 0.88rem;
+    border-radius: 14px;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .btn:active {
+    transform: scale(0.97);
   }
 
   .btn-lg {
-    padding: 0.85rem 1.2rem;
+    padding: 0.85rem 1.25rem;
+    font-size: 0.95rem;
   }
 
+  /* ---- Modal — bottom sheet ---- */
+  .modal-content {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border-radius: 24px 24px 0 0;
+    max-height: 92vh;
+    max-height: 92dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  /* ---- Login — safe area ---- */
   .login-page {
     padding: 1rem;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
   }
 
   .login-card {
     padding: 1.5rem;
+    border-radius: 26px;
+  }
+
+  .login-title {
+    font-size: 1.5rem;
+  }
+
+  /* ---- Badges ---- */
+  .badge {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.55rem;
+  }
+
+  /* ---- Photo lightbox fullscreen ---- */
+  .photo-lightbox {
+    padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px);
+  }
+
+  .photo-lightbox-img {
+    max-width: 96vw;
+    max-height: 88vh;
+    max-height: 88dvh;
+    border-radius: 12px;
   }
 }
 
-/* Small Mobile (iPhone SE, etc) */
+/* ===========================
+   SMALL MOBILE (iPhone SE)
+   =========================== */
 @media (max-width: 375px) {
+  .main-content {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
 
   .page-title {
-    font-size: 1.25rem;
+    font-size: 1.3rem;
   }
 
-  .main-content {
-    padding: 0.75rem;
-    padding-top: 4rem;
+  .stat-card {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
   }
 }
 
-/* Tablet Portrait */
+/* ===========================
+   TABLET PORTRAIT
+   =========================== */
 @media (min-width: 769px) and (max-width: 1024px) {
   .sidebar {
-    width: 72px;
+    width: 240px;
+    left: 12px;
+    top: 12px;
+    height: calc(100vh - 24px);
+  }
+
+  .main-content {
+    margin-left: 272px;
   }
 
   .stats-grid {

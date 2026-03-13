@@ -215,7 +215,7 @@ ${deptSections}
           count: 0,
           latestDate: ins.inspection_date,
           latestScore: ins.total_score,
-          latestPhotos: ins.photo_urls || []
+          allPhotos: []
         };
       }
       map[deptName].totalImprovement += ins.score_improvement;
@@ -223,12 +223,12 @@ ${deptSections}
       map[deptName].totalInnovation += ins.score_innovation;
       map[deptName].totalScore += ins.total_score;
       map[deptName].count += 1;
+      if (ins.photo_urls && ins.photo_urls.length > 0) {
+        map[deptName].allPhotos = [...map[deptName].allPhotos, ...ins.photo_urls];
+      }
       if (ins.inspection_date > map[deptName].latestDate) {
         map[deptName].latestDate = ins.inspection_date;
         map[deptName].latestScore = ins.total_score;
-        if (ins.photo_urls && ins.photo_urls.length > 0) {
-          map[deptName].latestPhotos = ins.photo_urls;
-        }
       }
     });
 
@@ -545,9 +545,9 @@ ${deptSections}
                           <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: barColor }}>{dept.totalScore}</span>
                         </td>
                         <td style={{ textAlign: 'center' }}>
-                          {(dept.latestPhotos && dept.latestPhotos.length > 0) ? (
-                            <button onClick={() => setGalleryPhotos(dept.latestPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6' }}>
-                              🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{dept.latestPhotos.length}</span>
+                          {(dept.allPhotos && dept.allPhotos.length > 0) ? (
+                            <button onClick={() => setGalleryPhotos(dept.allPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6' }}>
+                              🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{dept.allPhotos.length}</span>
                             </button>
                           ) : <span style={{ color: '#d1d5db' }}>—</span>}
                         </td>
@@ -589,9 +589,9 @@ ${deptSections}
                       </span>
                       <span style={{ fontWeight: 'bold', fontSize: '1rem', flex: 1 }}>{dept.name}</span>
                       <span style={{ fontWeight: 'bold', fontSize: '1.3rem', color: barColor, flexShrink: 0 }}>{dept.totalScore}</span>
-                      {(dept.latestPhotos && dept.latestPhotos.length > 0) && (
-                        <button onClick={() => setGalleryPhotos(dept.latestPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#3b82f6', flexShrink: 0 }}>
-                          🔍 <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{dept.latestPhotos.length}</span>
+                      {(dept.allPhotos && dept.allPhotos.length > 0) && (
+                        <button onClick={() => setGalleryPhotos(dept.allPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#3b82f6', flexShrink: 0 }}>
+                          🔍 <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{dept.allPhotos.length}</span>
                         </button>
                       )}
                     </div>

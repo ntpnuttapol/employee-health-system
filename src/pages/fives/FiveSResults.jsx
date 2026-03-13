@@ -280,7 +280,7 @@ ${deptSections}
   }
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
       <div className="page-header">
         <h1 className="page-title">📊 ผลคะแนน 5ส &amp; อันดับแผนก</h1>
         <p className="page-subtitle">

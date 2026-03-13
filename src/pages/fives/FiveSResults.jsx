@@ -28,6 +28,7 @@ export default function FiveSResults() {
   const [saving, setSaving] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
   const [showRankingPopup, setShowRankingPopup] = useState(false);
+  const [podiumStep, setPodiumStep] = useState(0); // 0: ยังไม่เริ่ม, 1: แสดงอันดับ 3, 2: แสดงอันดับ 2, 3: แสดงอันดับ 1
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [galleryPhotos, setGalleryPhotos] = useState(null);
 
@@ -39,13 +40,44 @@ export default function FiveSResults() {
     const frame = () => {
       confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors });
       confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors });
-      if (Date.now() < end) requestAnimationFrame(frame);
     };
-    // พลุใหญ่ตรงกลาง
-    confetti({ particleCount: 100, spread: 100, origin: { y: 0.6 }, colors });
-    setTimeout(() => confetti({ particleCount: 80, spread: 120, origin: { y: 0.5 }, colors }), 300);
-    frame();
+    const timer = setInterval(frame, 30);
+    const stop = () => { clearInterval(timer); confetti.reset(); };
+    setTimeout(stop, duration);
   }, []);
+
+  // ควบคุมการแสดงผล podium ตามลำดับ
+  useEffect(() => {
+    if (showPodium && podiumStep === 0) {
+      // เริ่มแสดงอันดับ 3 หลัง 1 วินาที
+      const timer1 = setTimeout(() => {
+        setPodiumStep(1);
+      }, 1000);
+      
+      // แสดงอันดับ 2 หลังอีก 10 วินาที
+      const timer2 = setTimeout(() => {
+        setPodiumStep(2);
+      }, 11000);
+      
+      // แสดงอันดับ 1 หลังอีก 10 วินาที
+      const timer3 = setTimeout(() => {
+        setPodiumStep(3);
+        // ยิงพลุเมื่อแสดงอันดับ 1
+        setTimeout(fireConfetti, 500);
+      }, 21000);
+      
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+        clearTimeout(timer3);
+      };
+    }
+    
+    // Reset เมื่อปิด podium
+    if (!showPodium) {
+      setPodiumStep(0);
+    }
+  }, [showPodium, podiumStep, fireConfetti]);
 
   // ออกรีพอร์ต PDF
   const printReport = () => {
@@ -386,7 +418,7 @@ ${deptSections}
           {departmentRanking.length >= 3 && (
             <button
               className="btn btn-primary btn-lg"
-              onClick={() => { setShowPodium(true); setTimeout(fireConfetti, 300); }}
+              onClick={() => setShowPodium(true)}
               style={{
                 padding: '0.75rem 2.5rem',
                 fontSize: '1.1rem',
@@ -450,62 +482,88 @@ ${deptSections}
 
             {/* Podium */}
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              {/* 2nd Place */}
-              <div style={{ flex: 1, maxWidth: '180px', animation: 'slideUp 0.6s ease 0.3s both' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🥈</div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                  {departmentRanking[1].name}
+              {/* 3rd Place - แสดงเมื่อ podiumStep >= 1 */}
+              {podiumStep >= 1 && (
+                <div style={{ 
+                  flex: 1, maxWidth: '180px', 
+                  animation: 'slideUp 0.6s ease both',
+                  opacity: podiumStep >= 1 ? 1 : 0,
+                  transform: podiumStep >= 1 ? 'translateY(0)' : 'translateY(20px)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>�</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                    {departmentRanking[2].name}
+                  </div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#cd7f32' }}>
+                    {departmentRanking[2].totalScore}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>คะแนน</div>
+                  <div style={{
+                    height: '70px', marginTop: '0.75rem',
+                    background: 'linear-gradient(180deg, #cd7f32, #a0522d)',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '2rem', fontWeight: 'bold', color: '#fff'
+                  }}>3</div>
                 </div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#c0c0c0' }}>
-                  {departmentRanking[1].totalScore}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>คะแนน</div>
-                <div style={{
-                  height: '100px', marginTop: '0.75rem',
-                  background: 'linear-gradient(180deg, #94a3b8, #64748b)',
-                  borderRadius: '8px 8px 0 0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '2rem', fontWeight: 'bold', color: '#fff'
-                }}>2</div>
-              </div>
+              )}
 
-              {/* 1st Place */}
-              <div style={{ flex: 1, maxWidth: '200px', animation: 'slideUp 0.6s ease 0.1s both' }}>
-                <div style={{ fontSize: '3.5rem', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 10px #ffd700)' }}>🥇</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffd700', marginBottom: '0.25rem' }}>
-                  {departmentRanking[0].name}
+              {/* 2nd Place - แสดงเมื่อ podiumStep >= 2 */}
+              {podiumStep >= 2 && (
+                <div style={{ 
+                  flex: 1, maxWidth: '180px', 
+                  animation: 'slideUp 0.6s ease both',
+                  opacity: podiumStep >= 2 ? 1 : 0,
+                  transform: podiumStep >= 2 ? 'translateY(0)' : 'translateY(20px)'
+                }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>�</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                    {departmentRanking[1].name}
+                  </div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#c0c0c0' }}>
+                    {departmentRanking[1].totalScore}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>คะแนน</div>
+                  <div style={{
+                    height: '100px', marginTop: '0.75rem',
+                    background: 'linear-gradient(180deg, #94a3b8, #64748b)',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '2rem', fontWeight: 'bold', color: '#fff'
+                  }}>2</div>
                 </div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ffd700' }}>
-                  {departmentRanking[0].totalScore}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#fbbf24' }}>คะแนน</div>
-                <div style={{
-                  height: '140px', marginTop: '0.75rem',
-                  background: 'linear-gradient(180deg, #fbbf24, #f59e0b)',
-                  borderRadius: '8px 8px 0 0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '2.5rem', fontWeight: 'bold', color: '#fff'
-                }}>1</div>
-              </div>
+              )}
 
-              {/* 3rd Place */}
-              <div style={{ flex: 1, maxWidth: '180px', animation: 'slideUp 0.6s ease 0.5s both' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🥉</div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                  {departmentRanking[2].name}
+              {/* 1st Place - แสดงเมื่อ podiumStep >= 3 */}
+              {podiumStep >= 3 && (
+                <div style={{ 
+                  flex: 1, maxWidth: '200px', 
+                  animation: 'slideUp 0.6s ease both',
+                  opacity: podiumStep >= 3 ? 1 : 0,
+                  transform: podiumStep >= 3 ? 'translateY(0)' : 'translateY(20px)'
+                }}>
+                  <div style={{ fontSize: '3.5rem', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 10px #ffd700)' }}>�</div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffd700', marginBottom: '0.25rem' }}>
+                    {departmentRanking[0].name}
+                  </div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ffd700' }}>
+                    {departmentRanking[0].totalScore}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#fbbf24' }}>คะแนน</div>
+                  <div style={{
+                    height: '140px', marginTop: '0.75rem',
+                    background: 'linear-gradient(180deg, #fbbf24, #f59e0b)',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '2.5rem', fontWeight: 'bold', color: '#fff'
+                  }}>1</div>
                 </div>
-                <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#cd7f32' }}>
-                  {departmentRanking[2].totalScore}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>คะแนน</div>
-                <div style={{
-                  height: '70px', marginTop: '0.75rem',
-                  background: 'linear-gradient(180deg, #cd7f32, #a0522d)',
-                  borderRadius: '8px 8px 0 0',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '2rem', fontWeight: 'bold', color: '#fff'
-                }}>3</div>
-              </div>
+              )}
+
+              {/* Placeholder space เมื่อยังไม่แสดงอันดับ */}
+              {podiumStep < 1 && <div style={{ flex: 1, maxWidth: '180px' }}></div>}
+              {podiumStep < 2 && <div style={{ flex: 1, maxWidth: '200px' }}></div>}
+              {podiumStep < 3 && <div style={{ flex: 1, maxWidth: '180px' }}></div>}
             </div>
 
             <button

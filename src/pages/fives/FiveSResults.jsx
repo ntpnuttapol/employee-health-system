@@ -84,13 +84,15 @@ export default function FiveSResults() {
         clearTimeout(timer3);
       };
     }
-    
-    // Reset เมื่อปิด podium
+  }, [showPodium, fireConfetti]); // ลบ podiumStep ออกจาก dependency
+  
+  // Reset เมื่อปิด podium
+  useEffect(() => {
     if (!showPodium) {
       setPodiumStep(0);
       setCountdown(0);
     }
-  }, [showPodium, podiumStep, fireConfetti]);
+  }, [showPodium]);
 
   // ออกรีพอร์ต PDF
   const printReport = () => {

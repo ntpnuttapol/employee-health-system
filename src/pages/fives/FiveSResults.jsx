@@ -28,7 +28,8 @@ export default function FiveSResults() {
   const [saving, setSaving] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
   const [showRankingPopup, setShowRankingPopup] = useState(false);
-  const [podiumStep, setPodiumStep] = useState(0); // 0: ยังไม่เริ่ม, 1: แสดงอันดับ 3, 2: แสดงอันดับ 2, 3: แสดงอันดับ 1
+  const [podiumStep, setPodiumStep] = useState(0); // 0: countdown, 1: แสดงอันดับ 3, 2: แสดงอันดับ 2, 3: แสดงอันดับ 1
+  const [countdown, setCountdown] = useState(0); // 5-1 countdown
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [galleryPhotos, setGalleryPhotos] = useState(null);
 
@@ -49,25 +50,36 @@ export default function FiveSResults() {
   // ควบคุมการแสดงผล podium ตามลำดับ
   useEffect(() => {
     if (showPodium && podiumStep === 0) {
-      // เริ่มแสดงอันดับ 3 หลัง 1 วินาที
-      const timer1 = setTimeout(() => {
-        setPodiumStep(1);
-      }, 1000);
+      // Countdown 5-1 (1 วินาทีต่อตัว)
+      const countdownTimers = [];
+      for (let i = 5; i >= 1; i--) {
+        const timer = setTimeout(() => {
+          setCountdown(i);
+          if (i === 1) {
+            // เมื่อ countdown เสร็จ ให้เริ่มแสดงอันดับ 3
+            setTimeout(() => {
+              setPodiumStep(1);
+              setCountdown(0);
+            }, 1000);
+          }
+        }, (6 - i) * 1000);
+        countdownTimers.push(timer);
+      }
       
-      // แสดงอันดับ 2 หลังอีก 10 วินาที
+      // แสดงอันดับ 2 หลังจากอันดับ 3 อีก 10 วินาที
       const timer2 = setTimeout(() => {
         setPodiumStep(2);
-      }, 11000);
+      }, 17000); // 6s countdown + 1s delay + 10s wait
       
-      // แสดงอันดับ 1 หลังอีก 10 วินาที
+      // แสดงอันดับ 1 หลังจากอันดับ 2 อีก 10 วินาที
       const timer3 = setTimeout(() => {
         setPodiumStep(3);
         // ยิงพลุเมื่อแสดงอันดับ 1
         setTimeout(fireConfetti, 500);
-      }, 21000);
+      }, 27000); // +10s อีก
       
       return () => {
-        clearTimeout(timer1);
+        countdownTimers.forEach(timer => clearTimeout(timer));
         clearTimeout(timer2);
         clearTimeout(timer3);
       };
@@ -76,6 +88,7 @@ export default function FiveSResults() {
     // Reset เมื่อปิด podium
     if (!showPodium) {
       setPodiumStep(0);
+      setCountdown(0);
     }
   }, [showPodium, podiumStep, fireConfetti]);
 
@@ -479,6 +492,21 @@ ${deptSections}
                 ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
                 : 'ข้อมูลทั้งหมด'}
             </div>
+
+            {/* Countdown Display */}
+            {countdown > 0 && (
+              <div style={{ 
+                fontSize: '8rem', 
+                fontWeight: 'bold', 
+                color: '#ff6b6b', 
+                textAlign: 'center', 
+                marginBottom: '2rem',
+                animation: 'pulse 1s ease-in-out infinite',
+                textShadow: '0 0 20px rgba(255, 107, 107, 0.5)'
+              }}>
+                {countdown}
+              </div>
+            )}
 
             {/* Podium */}
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>

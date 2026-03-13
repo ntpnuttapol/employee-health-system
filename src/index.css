@@ -2473,6 +2473,18 @@ a:hover {
     font-size: 0.75rem !important;
   }
   
+  /* Pulse animation for countdown */
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.1);
+      opacity: 0.8;
+    }
+  }
+  
   /* Compact legend */
   .card h2 {
     font-size: 0.9rem !important;

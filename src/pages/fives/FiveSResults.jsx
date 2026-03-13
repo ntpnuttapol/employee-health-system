@@ -2,6 +2,52 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import confetti from 'canvas-confetti';
+import heic2any from 'heic2any';
+
+// Component สำหรับแสดงรูป HEIC โดยแปลงเป็น JPEG ใน browser
+function HeicImage({ url, alt, style, onClick }) {
+  const [src, setSrc] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const converted = await heic2any({ blob, toType: 'image/jpeg', quality: 0.8 });
+        if (!cancelled) {
+          const objUrl = URL.createObjectURL(converted);
+          setSrc(objUrl);
+        }
+      } catch {
+        if (!cancelled) setFailed(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [url]);
+
+  if (loading) return (
+    <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6' }}>
+      <div style={{ textAlign: 'center', fontSize: '0.75rem', color: '#6b7280' }}>
+        <div className="loading-spinner" style={{ width: 24, height: 24, margin: '0 auto 4px' }} />
+        กำลังแปลงรูป...
+      </div>
+    </div>
+  );
+  if (failed) return (
+    <div style={{ ...style, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6' }}>
+      <div style={{ textAlign: 'center', padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+        <div style={{ fontSize: '2rem' }}>⚠️</div>
+        <a href={url} download style={{ color: '#3b82f6', fontSize: '0.7rem' }}>ดาวน์โหลด</a>
+      </div>
+    </div>
+  );
+  return <img src={src} alt={alt} style={style} onClick={onClick} />;
+}
 
 export default function FiveSResults() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
@@ -954,20 +1000,28 @@ ${deptSections}
         </>
       )}
       {/* Lightbox */}
-      {lightboxUrl && (
-        <div
-          className="photo-lightbox"
-          onClick={() => setLightboxUrl(null)}
-        >
-          <div className="photo-lightbox-inner" onClick={e => e.stopPropagation()}>
-            <button
-              className="photo-lightbox-close"
-              onClick={() => setLightboxUrl(null)}
-            >✕</button>
-            <img src={lightboxUrl} alt="ขยาย" className="photo-lightbox-img" />
+      {lightboxUrl && (() => {
+        const ext = String(lightboxUrl).split('.').pop().split('?')[0].toLowerCase();
+        const isHeic = ['heic', 'heif'].includes(ext);
+        return (
+          <div
+            className="photo-lightbox"
+            onClick={() => setLightboxUrl(null)}
+          >
+            <div className="photo-lightbox-inner" onClick={e => e.stopPropagation()}>
+              <button
+                className="photo-lightbox-close"
+                onClick={() => setLightboxUrl(null)}
+              >✕</button>
+              {isHeic ? (
+                <HeicImage url={lightboxUrl} alt="ขยาย" style={{ maxWidth: '90vw', maxHeight: '85vh', objectFit: 'contain', borderRadius: '8px' }} />
+              ) : (
+                <img src={lightboxUrl} alt="ขยาย" className="photo-lightbox-img" />
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Gallery Modal */}
       {galleryPhotos && (
@@ -1007,20 +1061,17 @@ ${deptSections}
               {galleryPhotos.map((url, idx) => {
                 const ext = String(url).split('.').pop().split('?')[0].toLowerCase();
                 const isHeic = ['heic', 'heif'].includes(ext);
+                const imgStyle = { width: '100%', height: '100%', objectFit: 'cover' };
                 return (
-                  <div key={idx} style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => { if (!isHeic) { setLightboxUrl(url); setGalleryPhotos(null); } }}>
+                  <div key={idx} style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', background: '#f3f4f6' }}
+                    onClick={() => { setLightboxUrl(url); setGalleryPhotos(null); }}>
                     {isHeic ? (
-                      <div style={{ textAlign: 'center', padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📷</div>
-                        <div>ไฟล์ HEIC</div>
-                        <a href={url} download style={{ color: '#3b82f6', fontSize: '0.7rem' }}>ดาวน์โหลด</a>
-                      </div>
+                      <HeicImage url={url} alt={`รูป ${idx + 1}`} style={imgStyle} />
                     ) : (
                       <img
                         src={url}
                         alt={`รูป ${idx + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        style={imgStyle}
                         onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="text-align:center;padding:0.5rem;font-size:0.75rem;color:#6b7280"><div style="font-size:2rem">⚠️</div>โหลดรูปไม่ได้</div>'; }}
                       />
                     )}

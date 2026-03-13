@@ -289,43 +289,48 @@ ${deptSections}
       </div>
 
       {/* Filter */}
-      <div className="card" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <label style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>เลือกวันที่ตรวจ:</label>
-        <input
-          type="date"
-          className="form-input"
-          style={{ maxWidth: '200px' }}
-          value={filterDate}
-          onChange={(e) => setFilterDate(e.target.value)}
-        />
-        <button
-          className="btn btn-secondary"
-          onClick={() => setFilterDate('')}
-          disabled={!filterDate}
-          style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
-        >
-          ล้างวันที่ (ดูทั้งหมด)
-        </button>
-
-        <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-          ({filtered.length} รายการ จาก {departmentRanking.length} แผนก)
-        </span>
-        <button
-          className="btn btn-secondary"
-          style={{ marginLeft: 'auto' }}
-          onClick={printReport}
-          disabled={departmentRanking.length === 0}
-        >
-          🖨️ ออกรีพอร์ต
-        </button>
-        <button
-          className="btn btn-primary"
-          style={{ marginLeft: '0.5rem' }}
-          onClick={printPhotoReport}
-          disabled={inspections.filter(i => i.photo_urls && i.photo_urls.length > 0).length === 0}
-        >
-          📸 รายงานรูปภาพ
-        </button>
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <label style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>เลือกวันที่ตรวจ:</label>
+          <input
+            type="date"
+            className="form-input"
+            style={{ maxWidth: '200px', flex: 1, minWidth: 150 }}
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+          />
+          <button
+            className="btn btn-secondary"
+            onClick={() => setFilterDate('')}
+            disabled={!filterDate}
+            style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
+          >
+            ล้าง
+          </button>
+        </div>
+        <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
+            ({filtered.length} รายการ จาก {departmentRanking.length} แผนก)
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={printReport}
+              disabled={departmentRanking.length === 0}
+              style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
+            >
+              🖨️ รีพอร์ต
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={printPhotoReport}
+              disabled={inspections.filter(i => i.photo_urls && i.photo_urls.length > 0).length === 0}
+              style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
+            >
+              📸 รูป
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* สรุปคะแนนรวม */}

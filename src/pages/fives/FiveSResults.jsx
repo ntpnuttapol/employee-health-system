@@ -544,9 +544,7 @@ ${deptSections}
               {podiumStep >= 1 && (
                 <div style={{ 
                   flex: 1, maxWidth: '180px', 
-                  animation: 'slideUp 0.6s ease both',
-                  opacity: podiumStep >= 1 ? 1 : 0,
-                  transform: podiumStep >= 1 ? 'translateY(0)' : 'translateY(20px)'
+                  animation: 'slideUp 0.6s ease both'
                 }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>�</div>
                   <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
@@ -570,9 +568,7 @@ ${deptSections}
               {podiumStep >= 2 && (
                 <div style={{ 
                   flex: 1, maxWidth: '180px', 
-                  animation: 'slideUp 0.6s ease both',
-                  opacity: podiumStep >= 2 ? 1 : 0,
-                  transform: podiumStep >= 2 ? 'translateY(0)' : 'translateY(20px)'
+                  animation: 'slideUp 0.6s ease both'
                 }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>�</div>
                   <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
@@ -596,9 +592,7 @@ ${deptSections}
               {podiumStep >= 3 && (
                 <div style={{ 
                   flex: 1, maxWidth: '200px', 
-                  animation: 'slideUp 0.6s ease both',
-                  opacity: podiumStep >= 3 ? 1 : 0,
-                  transform: podiumStep >= 3 ? 'translateY(0)' : 'translateY(20px)'
+                  animation: 'slideUp 0.6s ease both'
                 }}>
                   <div style={{ fontSize: '3.5rem', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 10px #ffd700)' }}>�</div>
                   <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffd700', marginBottom: '0.25rem' }}>

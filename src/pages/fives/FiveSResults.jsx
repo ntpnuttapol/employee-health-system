@@ -365,9 +365,9 @@ ${deptSections}
         </div>
       )}
 
-      {/* ปุ่มเปิด Popup ดูคะแนน */}
+      {/* ปุ่ม Popup และ Podium */}
       {departmentRanking.length > 0 && (
-        <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '1rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button
             className="btn btn-primary btn-lg"
             onClick={() => setShowRankingPopup(true)}
@@ -383,6 +383,25 @@ ${deptSections}
           >
             📊 ดูอันดับคะแนนทั้งหมด
           </button>
+          {departmentRanking.length >= 3 && (
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={() => { setShowPodium(true); setTimeout(fireConfetti, 300); }}
+              style={{
+                padding: '0.75rem 2.5rem',
+                fontSize: '1.1rem',
+                background: 'linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6)',
+                border: 'none',
+                borderRadius: '12px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(239,68,68,0.4)',
+                color: 'white',
+                fontWeight: 'bold'
+              }}
+            >
+              🏆 ประกาศอันดับ Top 3
+            </button>
+          )}
         </div>
       )}
 
@@ -596,24 +615,7 @@ ${deptSections}
               </table>
             </div>
 
-            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              {departmentRanking.length >= 3 && (
-                <button
-                  className="btn btn-primary"
-                  onClick={() => { setShowRankingPopup(false); setShowPodium(true); setTimeout(fireConfetti, 300); }}
-                  style={{
-                    padding: '0.5rem 1.5rem',
-                    background: 'linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    color: 'white',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  🏆 ประกาศอันดับ Top 3
-                </button>
-              )}
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowRankingPopup(false)}

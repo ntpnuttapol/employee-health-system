@@ -28,69 +28,46 @@ export default function FiveSResults() {
   const [saving, setSaving] = useState(false);
   const [showPodium, setShowPodium] = useState(false);
   const [showRankingPopup, setShowRankingPopup] = useState(false);
-  const [podiumStep, setPodiumStep] = useState(0); // 0: countdown, 1: แสดงอันดับ 3, 2: แสดงอันดับ 2, 3: แสดงอันดับ 1
-  const [countdown, setCountdown] = useState(0); // 5-1 countdown
+  const [podiumPhase, setPodiumPhase] = useState(-1);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [galleryPhotos, setGalleryPhotos] = useState(null);
 
-  // พลุเมื่อเปิด podium
+  // พลุ
   const fireConfetti = useCallback(() => {
-    const duration = 4000;
-    const end = Date.now() + duration;
     const colors = ['#FFD700', '#FFA500', '#FF6347', '#00CED1', '#7B68EE', '#32CD32'];
     const frame = () => {
       confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0, y: 0.7 }, colors });
       confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1, y: 0.7 }, colors });
     };
     const timer = setInterval(frame, 30);
-    const stop = () => { clearInterval(timer); confetti.reset(); };
-    setTimeout(stop, duration);
+    setTimeout(() => { clearInterval(timer); confetti.reset(); }, 4000);
   }, []);
 
-  // ควบคุมการแสดงผล podium — flat timeline ไม่ซ้อนกัน
+  // Podium animation — flat timeline
+  // Phase: -1=idle, 5/4/3/2/1=countdown, 10=label3rd, 11=reveal3rd, 20=label2nd, 21=reveal2nd, 30=label1st, 31=reveal1st, 99=done
   useEffect(() => {
-    if (!showPodium) return;
+    if (!showPodium) { setPodiumPhase(-1); return; }
+
+    const seq = [
+      [500, 5], [1000, 4], [1000, 3], [1000, 2], [1000, 1],
+      [1000, 10], [1500, 11],
+      [2000, 20], [1500, 21],
+      [2000, 30], [1500, 31],
+      [500, 99],
+    ];
+
     const timers = [];
-    const at = (ms, fn) => timers.push(setTimeout(fn, ms));
-    let t = 0;
-
-    // Countdown เริ่มต้น 5-4-3-2-1
-    at(t += 1000, () => setCountdown(5));
-    at(t += 1000, () => setCountdown(4));
-    at(t += 1000, () => setCountdown(3));
-    at(t += 1000, () => setCountdown(2));
-    at(t += 1000, () => setCountdown(1));
-
-    // แสดงอันดับ 3
-    at(t += 1000, () => { setCountdown(0); setPodiumStep(1); });
-
-    // Countdown สำหรับอันดับ 2: 3-2-1
-    at(t += 2000, () => setCountdown(3));
-    at(t += 1000, () => setCountdown(2));
-    at(t += 1000, () => setCountdown(1));
-
-    // แสดงอันดับ 2
-    at(t += 1000, () => { setCountdown(0); setPodiumStep(2); });
-
-    // Countdown สำหรับอันดับ 1: 3-2-1
-    at(t += 2000, () => setCountdown(3));
-    at(t += 1000, () => setCountdown(2));
-    at(t += 1000, () => setCountdown(1));
-
-    // แสดงอันดับ 1 + พลุ
-    at(t += 1000, () => { setCountdown(0); setPodiumStep(3); });
-    at(t += 500, () => fireConfetti());
+    let elapsed = 0;
+    seq.forEach(([delay, phase]) => {
+      elapsed += delay;
+      timers.push(setTimeout(() => {
+        setPodiumPhase(phase);
+        if (phase === 31) setTimeout(fireConfetti, 300);
+      }, elapsed));
+    });
 
     return () => timers.forEach(clearTimeout);
   }, [showPodium, fireConfetti]);
-  
-  // Reset เมื่อปิด podium
-  useEffect(() => {
-    if (!showPodium) {
-      setPodiumStep(0);
-      setCountdown(0);
-    }
-  }, [showPodium]);
 
   // ออกรีพอร์ต PDF
   const printReport = () => {
@@ -450,161 +427,215 @@ ${deptSections}
         </div>
       )}
 
-      {/* Podium Popup Modal */}
+      {/* Podium Popup Modal — New */}
       {showPodium && departmentRanking.length >= 3 && (
         <div
           style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+            position: 'fixed', inset: 0,
+            background: 'radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a1a 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 9999, animation: 'fadeIn 0.3s ease'
+            zIndex: 9999, flexDirection: 'column'
           }}
           onClick={() => setShowPodium(false)}
         >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-              borderRadius: '20px',
-              padding: '2rem',
-              width: '90%',
-              maxWidth: '700px',
-              textAlign: 'center',
-              position: 'relative',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
-              animation: 'slideUp 0.5s ease'
-            }}
-          >
+          <div onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', width: '90%', maxWidth: '750px' }}>
+
+            {/* ปุ่มปิด */}
             <button
               onClick={() => setShowPodium(false)}
               style={{
-                position: 'absolute', top: '1rem', right: '1rem',
-                background: 'rgba(255,255,255,0.1)', border: 'none',
-                color: '#fff', fontSize: '1.2rem', cursor: 'pointer',
-                borderRadius: '50%', width: '36px', height: '36px'
+                position: 'fixed', top: '1.5rem', right: '1.5rem',
+                background: 'rgba(255,255,255,0.15)', border: 'none',
+                color: '#fff', fontSize: '1.5rem', cursor: 'pointer',
+                borderRadius: '50%', width: '44px', height: '44px', zIndex: 10000
               }}
             >✕</button>
 
-            <div style={{ fontSize: '1.5rem', color: '#ffd700', fontWeight: 'bold', marginBottom: '0.25rem' }}>
-              🎉 ประกาศผลอันดับ 5ส 🎉
+            {/* หัวข้อ */}
+            <div style={{
+              fontSize: '1.3rem', color: '#94a3b8', marginBottom: '0.5rem',
+              opacity: podiumPhase >= 5 ? 1 : 0, transition: 'opacity 0.5s'
+            }}>
+              � ประกาศผลอันดับ 5ส
             </div>
-            <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '1rem' }}>
+            <div style={{
+              fontSize: '0.85rem', color: '#64748b', marginBottom: '2rem',
+              opacity: podiumPhase >= 5 ? 1 : 0, transition: 'opacity 0.5s'
+            }}>
               {filterDate
                 ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
                 : 'ข้อมูลทั้งหมด'}
             </div>
 
-            {/* Countdown Display */}
-            {countdown > 0 && (
-              <div style={{ 
-                fontSize: '8rem', 
-                fontWeight: 'bold', 
-                color: '#ff6b6b', 
-                textAlign: 'center', 
-                marginBottom: '2rem',
-                animation: 'pulse 1s ease-in-out infinite',
-                textShadow: '0 0 20px rgba(255, 107, 107, 0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center'
+            {/* Countdown 5-4-3-2-1 */}
+            {podiumPhase >= 1 && podiumPhase <= 5 && (
+              <div style={{
+                fontSize: '10rem', fontWeight: '900', lineHeight: 1,
+                color: 'transparent',
+                background: 'linear-gradient(135deg, #ff6b6b, #ffd700)',
+                WebkitBackgroundClip: 'text', backgroundClip: 'text',
+                animation: 'pulse 0.8s ease-in-out',
+                margin: '2rem 0'
               }}>
-                <div>
-                  {podiumStep === 1 && '🥉'}
-                  {podiumStep === 2 && '🥈'}
-                  {podiumStep === 3 && '🥇'}
-                </div>
-                {countdown}
+                {podiumPhase}
               </div>
             )}
 
-            {/* Podium */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-              {/* 3rd Place - แสดงเมื่อ podiumStep >= 1 */}
-              {podiumStep >= 1 && (
-                <div style={{ 
-                  flex: 1, maxWidth: '180px', 
-                  animation: 'slideUp 0.6s ease both'
-                }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>�</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                    {departmentRanking[2].name}
-                  </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#cd7f32' }}>
-                    {departmentRanking[2].totalScore}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>คะแนน</div>
-                  <div style={{
-                    height: '70px', marginTop: '0.75rem',
-                    background: 'linear-gradient(180deg, #cd7f32, #a0522d)',
-                    borderRadius: '8px 8px 0 0',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '2rem', fontWeight: 'bold', color: '#fff'
-                  }}>3</div>
-                </div>
-              )}
+            {/* Label: อันดับที่ 3 */}
+            {podiumPhase === 10 && (
+              <div style={{
+                fontSize: '2rem', fontWeight: 'bold', color: '#cd7f32',
+                animation: 'slideUp 0.5s ease', margin: '3rem 0'
+              }}>
+                🥉 อันดับที่ 3
+              </div>
+            )}
 
-              {/* 2nd Place - แสดงเมื่อ podiumStep >= 2 */}
-              {podiumStep >= 2 && (
-                <div style={{ 
-                  flex: 1, maxWidth: '180px', 
-                  animation: 'slideUp 0.6s ease both'
+            {/* Label: อันดับที่ 2 */}
+            {podiumPhase === 20 && (
+              <div style={{
+                fontSize: '2rem', fontWeight: 'bold', color: '#c0c0c0',
+                animation: 'slideUp 0.5s ease', margin: '3rem 0'
+              }}>
+                🥈 อันดับที่ 2
+              </div>
+            )}
+
+            {/* Label: อันดับที่ 1 */}
+            {podiumPhase === 30 && (
+              <div style={{
+                fontSize: '2.5rem', fontWeight: 'bold', color: '#ffd700',
+                animation: 'slideUp 0.5s ease', margin: '3rem 0',
+                textShadow: '0 0 30px rgba(255, 215, 0, 0.5)'
+              }}>
+                🥇 อันดับที่ 1
+              </div>
+            )}
+
+            {/* Podium Reveal — แสดงหลังจาก phase 11+ */}
+            {podiumPhase >= 11 && (
+              <div style={{
+                display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                gap: '1rem', marginTop: '1rem', minHeight: '280px'
+              }}>
+                {/* 2nd Place — ซ้าย */}
+                <div style={{
+                  flex: 1, maxWidth: '200px', textAlign: 'center',
+                  opacity: podiumPhase >= 21 ? 1 : 0,
+                  transform: podiumPhase >= 21 ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.8)',
+                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>�</div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
-                    {departmentRanking[1].name}
-                  </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#c0c0c0' }}>
-                    {departmentRanking[1].totalScore}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>คะแนน</div>
+                  <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🥈</div>
                   <div style={{
-                    height: '100px', marginTop: '0.75rem',
+                    background: 'linear-gradient(180deg, rgba(192,192,192,0.2), rgba(192,192,192,0.05))',
+                    borderRadius: '16px', padding: '1rem', border: '1px solid rgba(192,192,192,0.3)'
+                  }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                      {departmentRanking[1].name}
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: '900', color: '#c0c0c0' }}>
+                      {departmentRanking[1].totalScore}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>คะแนน</div>
+                  </div>
+                  <div style={{
+                    height: '90px', marginTop: '0.5rem',
                     background: 'linear-gradient(180deg, #94a3b8, #64748b)',
-                    borderRadius: '8px 8px 0 0',
+                    borderRadius: '12px 12px 0 0',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '2rem', fontWeight: 'bold', color: '#fff'
+                    fontSize: '1.8rem', fontWeight: '900', color: '#fff'
                   }}>2</div>
                 </div>
-              )}
 
-              {/* 1st Place - แสดงเมื่อ podiumStep >= 3 */}
-              {podiumStep >= 3 && (
-                <div style={{ 
-                  flex: 1, maxWidth: '200px', 
-                  animation: 'slideUp 0.6s ease both'
+                {/* 1st Place — กลาง */}
+                <div style={{
+                  flex: 1, maxWidth: '220px', textAlign: 'center',
+                  opacity: podiumPhase >= 31 ? 1 : 0,
+                  transform: podiumPhase >= 31 ? 'translateY(0) scale(1)' : 'translateY(60px) scale(0.8)',
+                  transition: 'all 1s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}>
-                  <div style={{ fontSize: '3.5rem', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 10px #ffd700)' }}>�</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#ffd700', marginBottom: '0.25rem' }}>
-                    {departmentRanking[0].name}
-                  </div>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#ffd700' }}>
-                    {departmentRanking[0].totalScore}
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: '#fbbf24' }}>คะแนน</div>
                   <div style={{
-                    height: '140px', marginTop: '0.75rem',
+                    fontSize: '4rem', marginBottom: '0.5rem',
+                    filter: podiumPhase >= 31 ? 'drop-shadow(0 0 20px #ffd700)' : 'none',
+                    animation: podiumPhase >= 31 ? 'pulse 2s ease-in-out infinite' : 'none'
+                  }}>🥇</div>
+                  <div style={{
+                    background: 'linear-gradient(180deg, rgba(255,215,0,0.2), rgba(255,215,0,0.05))',
+                    borderRadius: '16px', padding: '1.25rem', border: '1px solid rgba(255,215,0,0.4)',
+                    boxShadow: podiumPhase >= 31 ? '0 0 40px rgba(255,215,0,0.15)' : 'none'
+                  }}>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ffd700', marginBottom: '0.25rem' }}>
+                      {departmentRanking[0].name}
+                    </div>
+                    <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#ffd700' }}>
+                      {departmentRanking[0].totalScore}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#fbbf24' }}>คะแนน</div>
+                  </div>
+                  <div style={{
+                    height: '130px', marginTop: '0.5rem',
                     background: 'linear-gradient(180deg, #fbbf24, #f59e0b)',
-                    borderRadius: '8px 8px 0 0',
+                    borderRadius: '12px 12px 0 0',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '2.5rem', fontWeight: 'bold', color: '#fff'
+                    fontSize: '2.2rem', fontWeight: '900', color: '#fff'
                   }}>1</div>
                 </div>
-              )}
 
-              {/* Placeholder space เมื่อยังไม่แสดงอันดับ */}
-              {podiumStep < 1 && <div style={{ flex: 1, maxWidth: '180px' }}></div>}
-              {podiumStep < 2 && <div style={{ flex: 1, maxWidth: '200px' }}></div>}
-              {podiumStep < 3 && <div style={{ flex: 1, maxWidth: '180px' }}></div>}
-            </div>
+                {/* 3rd Place — ขวา */}
+                <div style={{
+                  flex: 1, maxWidth: '200px', textAlign: 'center',
+                  opacity: podiumPhase >= 11 ? 1 : 0,
+                  transform: podiumPhase >= 11 ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.8)',
+                  transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🥉</div>
+                  <div style={{
+                    background: 'linear-gradient(180deg, rgba(205,127,50,0.2), rgba(205,127,50,0.05))',
+                    borderRadius: '16px', padding: '1rem', border: '1px solid rgba(205,127,50,0.3)'
+                  }}>
+                    <div style={{ fontSize: '1rem', fontWeight: 'bold', color: '#e2e8f0', marginBottom: '0.25rem' }}>
+                      {departmentRanking[2].name}
+                    </div>
+                    <div style={{ fontSize: '2rem', fontWeight: '900', color: '#cd7f32' }}>
+                      {departmentRanking[2].totalScore}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>คะแนน</div>
+                  </div>
+                  <div style={{
+                    height: '60px', marginTop: '0.5rem',
+                    background: 'linear-gradient(180deg, #cd7f32, #a0522d)',
+                    borderRadius: '12px 12px 0 0',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.8rem', fontWeight: '900', color: '#fff'
+                  }}>3</div>
+                </div>
+              </div>
+            )}
 
-            <button
-              onClick={() => { setShowPodium(false); fireConfetti(); }}
-              style={{
-                padding: '0.6rem 2rem', fontSize: '1rem',
-                background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
-                border: 'none', borderRadius: '8px', cursor: 'pointer',
-                color: '#1a1a2e', fontWeight: 'bold'
-              }}
-            >🎆 ยิงพลุอีกครั้ง!</button>
+            {/* ปุ่มล่าง */}
+            {podiumPhase >= 99 && (
+              <div style={{ marginTop: '2rem', animation: 'fadeIn 0.5s ease' }}>
+                <button
+                  onClick={() => fireConfetti()}
+                  style={{
+                    padding: '0.75rem 2rem', fontSize: '1rem',
+                    background: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+                    border: 'none', borderRadius: '12px', cursor: 'pointer',
+                    color: '#1a1a2e', fontWeight: 'bold', marginRight: '1rem'
+                  }}
+                >🎆 ยิงพลุอีกครั้ง!</button>
+                <button
+                  onClick={() => setShowPodium(false)}
+                  style={{
+                    padding: '0.75rem 2rem', fontSize: '1rem',
+                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '12px', cursor: 'pointer',
+                    color: '#fff', fontWeight: 'bold'
+                  }}
+                >ปิด</button>
+              </div>
+            )}
+
           </div>
         </div>
       )}

@@ -8,6 +8,9 @@ export default function FiveSVoting() {
   const { departments, branches } = useMasterData();
   const { user } = useAuth();
 
+  // ชื่อแผนกของผู้โหวต (ใช้ป้องกันการโหวตให้แผนกตัวเอง)
+  const voterDeptName = user?.employees?.departments?.name || null;
+
   // ล็อกเฉพาะสาขาสุวรรณภูมิ
   const suvarnabhumiBranch = (branches || []).find(b => b.name.includes('สุวรรณภูมิ'));
   const filteredDepartments = (departments || []).filter(
@@ -201,30 +204,44 @@ export default function FiveSVoting() {
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                    {group.departments.map(dept => (
-                      <div key={dept.name} style={{
-                        textAlign: 'center',
-                        padding: '1.5rem',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '12px',
-                        background: '#f9fafb',
-                        transition: 'all 0.2s',
-                        cursor: submittingVote ? 'not-allowed' : 'pointer'
-                      }}>
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'white', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '2rem' }}>
-                          🏢
+                    {group.departments.map(dept => {
+                      const isOwnDept = voterDeptName && dept.name === voterDeptName;
+                      return (
+                        <div key={dept.name} style={{
+                          textAlign: 'center',
+                          padding: '1.5rem',
+                          border: isOwnDept ? '1px solid #fca5a5' : '1px solid #e5e7eb',
+                          borderRadius: '12px',
+                          background: isOwnDept ? '#fef2f2' : '#f9fafb',
+                          transition: 'all 0.2s',
+                          cursor: (submittingVote || isOwnDept) ? 'not-allowed' : 'pointer',
+                          opacity: isOwnDept ? 0.7 : 1
+                        }}>
+                          <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'white', border: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', fontSize: '2rem' }}>
+                            {isOwnDept ? '🚫' : '🏢'}
+                          </div>
+                          <h4 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', color: isOwnDept ? '#9ca3af' : '#1e293b' }}>{dept.name}</h4>
+                          {isOwnDept && (
+                            <div style={{ fontSize: '0.8rem', color: '#dc2626', marginBottom: '0.75rem', fontWeight: '500' }}>
+                              ❌ ไม่สามารถโหวตให้แผนกตัวเองได้
+                            </div>
+                          )}
+                          <button
+                            className="btn btn-primary"
+                            style={{
+                              width: '100%',
+                              padding: '0.6rem',
+                              fontSize: '1rem',
+                              ...(isOwnDept ? { background: '#d1d5db', cursor: 'not-allowed', border: 'none', color: '#9ca3af' } : {})
+                            }}
+                            disabled={submittingVote || isOwnDept}
+                            onClick={() => handleVote(dept.name, group.category)}
+                          >
+                            {isOwnDept ? '🚫 แผนกตัวเอง' : submittingVote ? 'กำลังบันทึก...' : '✔️ โหวต'}
+                          </button>
                         </div>
-                        <h4 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', color: '#1e293b' }}>{dept.name}</h4>
-                        <button
-                          className="btn btn-primary"
-                          style={{ width: '100%', padding: '0.6rem', fontSize: '1rem' }}
-                          disabled={submittingVote}
-                          onClick={() => handleVote(dept.name, group.category)}
-                        >
-                          {submittingVote ? 'กำลังบันทึก...' : '✔️ โหวต'}
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

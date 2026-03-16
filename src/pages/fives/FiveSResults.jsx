@@ -31,6 +31,29 @@ export default function FiveSResults() {
   const [podiumPhase, setPodiumPhase] = useState(-1);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [galleryPhotos, setGalleryPhotos] = useState(null);
+  const [votes, setVotes] = useState([]);
+  const [showVoteResults, setShowVoteResults] = useState(false);
+  const [voteRevealIndex, setVoteRevealIndex] = useState(-1); // -1 = not started
+
+  const fetchVotes = useCallback(async (date) => {
+    if (!date) {
+      setVotes([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('five_s_votes')
+      .select('*')
+      .eq('inspection_date', date);
+    if (!error) {
+      setVotes(data || []);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (filterDate) {
+      fetchVotes(filterDate);
+    }
+  }, [filterDate, fetchVotes]);
 
   // พลุ
   const fireConfetti = useCallback(() => {
@@ -405,6 +428,25 @@ ${deptSections}
           >
             📊 ดูอันดับคะแนนทั้งหมด
           </button>
+          {votes.length > 0 && (
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={() => setShowVoteResults(true)}
+              style={{
+                padding: '0.75rem 2.5rem',
+                fontSize: '1.1rem',
+                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)',
+                color: 'white',
+                fontWeight: 'bold'
+              }}
+            >
+              🗳️ ผลการโหวต
+            </button>
+          )}
           {departmentRanking.length >= 3 && (
             <button
               className="btn btn-primary btn-lg"
@@ -639,6 +681,179 @@ ${deptSections}
           </div>
         </div>
       )}
+      {/* Vote Results Popup */}
+      {showVoteResults && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'radial-gradient(ellipse at center, #1a0533 0%, #0a0015 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, animation: 'fadeIn 0.3s ease'
+          }}
+          onClick={() => { setShowVoteResults(false); setVoteRevealIndex(-1); }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '95vw',
+              maxWidth: '580px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative',
+              textAlign: 'center',
+            }}
+          >
+            <button
+              style={{
+                position: 'fixed', top: '1.5rem', right: '1.5rem',
+                background: 'rgba(255,255,255,0.15)', border: 'none',
+                color: '#fff', fontSize: '1.5rem', cursor: 'pointer',
+                borderRadius: '50%', width: '44px', height: '44px', zIndex: 10000
+              }}
+              onClick={() => { setShowVoteResults(false); setVoteRevealIndex(-1); }}
+            >✕</button>
+
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🗳️</div>
+            <div style={{ fontSize: '1.4rem', color: '#e2d9f3', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+              ผลการโหวต 5ส
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#a78bfa', marginBottom: '2rem' }}>
+              {filterDate
+                ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+                : 'ข้อมูลทั้งหมด'}
+            </div>
+
+            {(() => {
+              const categories = {
+                rank_1: '🥇 อันดับ 1',
+                rank_2: '🥈 อันดับ 2',
+                rank_3: '🥉 อันดับ 3',
+                bottom_2: '⬇️ อันดับรองสุดท้าย',
+                bottom_1: '📉 อันดับสุดท้าย',
+              };
+              const categoryOrder = ['rank_1', 'rank_2', 'rank_3', 'bottom_2', 'bottom_1'];
+
+              if (votes.length === 0) {
+                return <div style={{ color: '#a78bfa', padding: '2rem' }}>ยังไม่มีผลการโหวตสำหรับวันที่เลือก</div>;
+              }
+
+              // Build flat list of all entries sorted lowest → highest
+              const allEntries = [];
+              categoryOrder.forEach(cat => {
+                const catVotes = votes.filter(v => v.vote_category === cat);
+                if (catVotes.length === 0) return;
+                const counts = {};
+                catVotes.forEach(v => { counts[v.department_id] = (counts[v.department_id] || 0) + 1; });
+                const maxVotes = Math.max(...Object.values(counts));
+                const deptEntries = Object.entries(counts).map(([deptId, count]) => {
+                  const dept = filteredDepartments.find(d => String(d.id) === String(deptId));
+                  return { name: dept?.name || `Dept ${deptId}`, count, cat, isWinner: count === maxVotes };
+                }).sort((a, b) => a.count - b.count); // lowest first
+                deptEntries.forEach(e => allEntries.push(e));
+              });
+
+              const totalEntries = allEntries.length;
+
+              if (voteRevealIndex === -1) {
+                return (
+                  <button
+                    onClick={() => {
+                      setVoteRevealIndex(0);
+                      let idx = 0;
+                      const interval = setInterval(() => {
+                        idx++;
+                        setVoteRevealIndex(idx);
+                        if (idx >= totalEntries - 1) clearInterval(interval);
+                      }, 5000);
+                    }}
+                    style={{
+                      marginTop: '1rem',
+                      padding: '1rem 2.5rem',
+                      fontSize: '1.2rem',
+                      fontWeight: 'bold',
+                      background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 20px rgba(124,58,237,0.5)',
+                      animation: 'pulse 1.5s infinite alternate'
+                    }}
+                  >
+                    🎬 เริ่มเปิดผลโหวต
+                  </button>
+                );
+              }
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {allEntries.map((entry, idx) => {
+                    if (idx > voteRevealIndex) return null;
+                    const isLast = idx === totalEntries - 1 && voteRevealIndex >= totalEntries - 1;
+                    return (
+                      <div
+                        key={`${entry.cat}-${entry.name}`}
+                        style={{
+                          padding: '1rem 1.5rem',
+                          borderRadius: '12px',
+                          background: entry.isWinner && isLast
+                            ? 'linear-gradient(135deg, #f0fdf4, #dcfce7)'
+                            : entry.isWinner ? 'rgba(255,255,255,0.12)'
+                            : 'rgba(255,255,255,0.06)',
+                          border: entry.isWinner && isLast ? '2px solid #16a34a' : '1px solid rgba(255,255,255,0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          animation: 'fadeIn 0.5s ease',
+                          transform: entry.isWinner && isLast ? 'scale(1.03)' : 'scale(1)',
+                          transition: 'all 0.5s ease',
+                        }}
+                      >
+                        <div style={{ textAlign: 'left' }}>
+                          <div style={{ fontSize: '0.7rem', color: entry.isWinner && isLast ? '#15803d' : '#a78bfa', marginBottom: '0.15rem' }}>
+                            {categories[entry.cat]}
+                          </div>
+                          <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: entry.isWinner && isLast ? '#15803d' : 'white' }}>
+                            {entry.isWinner && isLast ? '👑 ' : ''}{entry.name}
+                          </div>
+                        </div>
+                        <div style={{
+                          fontWeight: 'bold',
+                          fontSize: entry.isWinner && isLast ? '2rem' : '1.4rem',
+                          color: entry.isWinner && isLast ? '#16a34a' : '#e2d9f3',
+                          transition: 'font-size 0.5s'
+                        }}>
+                          {entry.count} <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>โหวต</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {voteRevealIndex >= totalEntries - 1 && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => setVoteRevealIndex(-1)}
+                        style={{ padding: '0.5rem 1.5rem', color: '#e2d9f3', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: 'pointer' }}
+                      >
+                        🔄 เริ่มใหม่
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            <div style={{ marginTop: '1.5rem', paddingBottom: '1rem' }}>
+              <button
+                onClick={() => { setShowVoteResults(false); setVoteRevealIndex(-1); }}
+                style={{ padding: '0.5rem 1.5rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: 'pointer', color: '#e2d9f3', fontWeight: 'bold' }}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Ranking Popup Modal */}
       {showRankingPopup && (
@@ -693,6 +908,7 @@ ${deptSections}
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>สะอาด</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ท้าทาย</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>คะแนนรวม</th>
+
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>รูป</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ครั้ง</th>
                   </tr>

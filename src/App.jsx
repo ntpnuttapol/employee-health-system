@@ -19,6 +19,7 @@ import HealthDashboard from './pages/health/HealthDashboard';
 import ProfilePage from './pages/ProfilePage';
 import FiveSInspection from './pages/fives/FiveSInspection';
 import FiveSResults from './pages/fives/FiveSResults';
+import FiveSVoting from './pages/fives/FiveSVoting';
 
 // Components
 import Sidebar from './components/common/Sidebar';
@@ -116,6 +117,7 @@ function AppLayout() {
 
             {/* 5S Inspection Routes */}
             <Route path="/five-s" element={<FiveSInspection />} />
+            <Route path="/five-s-vote" element={<FiveSVoting />} />
             <Route path="/five-s-results" element={
               <ProtectedRoute adminOnly><FiveSResults /></ProtectedRoute>
             } />

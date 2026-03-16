@@ -72,6 +72,10 @@ export default function Sidebar({ onLinkClick }) {
             <span className="sidebar-link-icon">🏆</span>
             <span className="sidebar-link-text">ตรวจประเมิน 5ส</span>
           </NavLink>
+          <NavLink to="/five-s-vote" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <span className="sidebar-link-icon">🗳️</span>
+            <span className="sidebar-link-text">โหวตคะแนน 5ส</span>
+          </NavLink>
           {isAdmin() && (
             <NavLink to="/five-s-results" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
               <span className="sidebar-link-icon">📊</span>

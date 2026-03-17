@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useMasterData } from '../../contexts/MasterDataContext';
+import { useAuth } from '../../contexts/AuthContext';
 import confetti from 'canvas-confetti';
 
 export default function FiveSResults() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
+  const { isAdmin } = useAuth();
 
   // ล็อกเฉพาะสาขาสุวรรณภูมิ
   const suvarnabhumiBranch = (branches || []).find(b => b.name.includes('สุวรรณภูมิ'));
@@ -34,6 +36,9 @@ export default function FiveSResults() {
   const [votes, setVotes] = useState([]);
   const [showVoteResults, setShowVoteResults] = useState(false);
   const [voteRevealIndex, setVoteRevealIndex] = useState(-1); // -1 = not started
+  const [showVoteStatus, setShowVoteStatus] = useState(false);
+  const [voteDetails, setVoteDetails] = useState([]);
+  const [loadingVoteDetails, setLoadingVoteDetails] = useState(false);
 
   const fetchVotes = useCallback(async (date) => {
     if (!date) {
@@ -47,6 +52,47 @@ export default function FiveSResults() {
     if (!error) {
       setVotes(data || []);
     }
+  }, []);
+
+  // ดึงข้อมูลรายละเอียดผู้โหวต (สำหรับ Admin)
+  const fetchVoteDetails = useCallback(async (date) => {
+    if (!date) return;
+    setLoadingVoteDetails(true);
+    // ดึง votes พร้อม join ข้อมูล user → employee → department
+    const { data, error } = await supabase
+      .from('five_s_votes')
+      .select('*, departments(name)')
+      .eq('inspection_date', date)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      // ดึง voter user info
+      const voterIds = [...new Set(data.map(v => v.voter_id).filter(Boolean))];
+      let usersMap = {};
+      if (voterIds.length > 0) {
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, username, full_name, employee_id, employees(first_name, last_name, department_id, departments(name))')
+          .in('id', voterIds);
+        if (usersData) {
+          usersData.forEach(u => { usersMap[String(u.id)] = u; });
+        }
+      }
+      // Enrich votes with voter info
+      const enriched = data.map(v => {
+        const voterUser = usersMap[String(v.voter_id)];
+        return {
+          ...v,
+          voterName: voterUser?.employees
+            ? `${voterUser.employees.first_name} ${voterUser.employees.last_name}`
+            : voterUser?.full_name || voterUser?.username || `ID: ${v.voter_id}`,
+          voterDeptName: voterUser?.employees?.departments?.name || '-',
+          votedDeptName: v.departments?.name || `Dept ${v.department_id}`,
+        };
+      });
+      setVoteDetails(enriched);
+    }
+    setLoadingVoteDetails(false);
   }, []);
 
   useEffect(() => {
@@ -445,6 +491,28 @@ ${deptSections}
               }}
             >
               🗳️ ผลการโหวต
+            </button>
+          )}
+          {isAdmin() && votes.length > 0 && (
+            <button
+              className="btn btn-primary btn-lg"
+              onClick={() => {
+                fetchVoteDetails(filterDate);
+                setShowVoteStatus(true);
+              }}
+              style={{
+                padding: '0.75rem 2.5rem',
+                fontSize: '1.1rem',
+                background: 'linear-gradient(135deg, #059669, #10b981)',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)',
+                color: 'white',
+                fontWeight: 'bold'
+              }}
+            >
+              📋 ดูแผนกที่โหวตแล้ว
             </button>
           )}
           {departmentRanking.length >= 3 && (
@@ -847,6 +915,212 @@ ${deptSections}
               <button
                 onClick={() => { setShowVoteResults(false); setVoteRevealIndex(-1); }}
                 style={{ padding: '0.5rem 1.5rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', cursor: 'pointer', color: '#e2d9f3', fontWeight: 'bold' }}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vote Status Popup (Admin Only) */}
+      {showVoteStatus && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.85)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 9999, animation: 'fadeIn 0.3s ease'
+          }}
+          onClick={() => setShowVoteStatus(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '1.5rem',
+              padding: '2rem',
+              maxWidth: '95vw',
+              width: '700px',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              position: 'relative',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            }}
+          >
+            <button
+              style={{
+                position: 'absolute', top: '1rem', right: '1rem',
+                background: 'rgba(0,0,0,0.1)', border: 'none',
+                color: '#666', fontSize: '1.2rem', cursor: 'pointer',
+                borderRadius: '50%', width: '36px', height: '36px'
+              }}
+              onClick={() => setShowVoteStatus(false)}
+            >✕</button>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📋</div>
+              <div style={{ fontSize: '1.4rem', color: '#1e293b', fontWeight: 'bold' }}>
+                สถานะการโหวตแยกตามแผนก
+              </div>
+              <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                {filterDate
+                  ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+                  : 'ข้อมูลทั้งหมด'}
+              </div>
+            </div>
+
+            {loadingVoteDetails ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
+                กำลังโหลดข้อมูล...
+              </div>
+            ) : voteDetails.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>
+                ยังไม่มีผู้โหวตสำหรับวันที่เลือก
+              </div>
+            ) : (() => {
+              // จัดกลุ่มตามแผนกผู้โหวต
+              const byVoterDept = {};
+              voteDetails.forEach(v => {
+                const deptName = v.voterDeptName;
+                if (!byVoterDept[deptName]) byVoterDept[deptName] = [];
+                byVoterDept[deptName].push(v);
+              });
+
+              const categoryLabels = {
+                rank_1: '🥇 อันดับ 1',
+                rank_2: '🥈 อันดับ 2',
+                rank_3: '🥉 อันดับ 3',
+                bottom_2: '⬇️ รองสุดท้าย',
+                bottom_1: '📉 สุดท้าย',
+              };
+
+              // สรุปจำนวน
+              const totalVoters = new Set(voteDetails.map(v => v.voter_id)).size;
+              const deptsThatVoted = Object.keys(byVoterDept);
+              
+              // คำนวณหาแผนกที่ติดอันดับเสมอ เพื่อหักออกจากแผนกที่รอโหวต
+              const uniqueScores = [...new Set(departmentRanking.map(r => r.totalScore))];
+              const targetScores = new Set();
+              if (uniqueScores.length > 0) targetScores.add(uniqueScores[0]);
+              if (uniqueScores.length > 1) targetScores.add(uniqueScores[1]);
+              if (uniqueScores.length > 2) targetScores.add(uniqueScores[2]);
+              if (uniqueScores.length > 0) targetScores.add(uniqueScores[uniqueScores.length - 1]);
+              if (uniqueScores.length > 1) targetScores.add(uniqueScores[uniqueScores.length - 2]);
+
+              const tiedDeptNames = new Set();
+              targetScores.forEach(score => {
+                const depts = departmentRanking.filter(d => d.totalScore === score);
+                if (depts.length > 1) {
+                  depts.forEach(d => tiedDeptNames.add(d.name));
+                }
+              });
+
+              // แผนกที่มีสิทธิ์โหวต = แผนกที่ถูกตรวจวันนี้ หักด้วย แผนกที่เสมอ
+              const inspectedDeptNames = departmentRanking.map(d => d.name);
+              const eligibleDeptNames = inspectedDeptNames.filter(name => !tiedDeptNames.has(name));
+              const deptsNotVoted = eligibleDeptNames.filter(name => !deptsThatVoted.includes(name));
+
+              return (
+                <>
+                  {/* Summary Cards */}
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '0.75rem', marginBottom: '1.5rem'
+                  }}>
+                    <div style={{ textAlign: 'center', padding: '1rem', background: '#f0fdf4', borderRadius: '12px', border: '1px solid #bbf7d0' }}>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#16a34a' }}>{totalVoters}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>คนที่โหวตแล้ว</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '1rem', background: '#eef2ff', borderRadius: '12px', border: '1px solid #c7d2fe' }}>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#4f46e5' }}>{deptsThatVoted.length}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>แผนกที่โหวตแล้ว</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '1rem', background: '#fef2f2', borderRadius: '12px', border: '1px solid #fecaca' }}>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#dc2626' }}>{deptsNotVoted.length}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>แผนกที่ยังไม่โหวต</div>
+                    </div>
+                  </div>
+
+                  {/* แผนกที่ยังไม่โหวต */}
+                  {deptsNotVoted.length > 0 && (
+                    <div style={{
+                      marginBottom: '1.5rem', padding: '1rem', background: '#fef2f2',
+                      borderRadius: '12px', border: '1px solid #fecaca'
+                    }}>
+                      <div style={{ fontWeight: 'bold', color: '#dc2626', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                        🔴 แผนกที่ยังไม่โหวต
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {deptsNotVoted.map(name => (
+                          <span key={name} style={{
+                            padding: '0.3rem 0.75rem', background: 'white',
+                            borderRadius: '20px', fontSize: '0.85rem', color: '#dc2626',
+                            border: '1px solid #fca5a5'
+                          }}>{name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* รายละเอียดแต่ละแผนก */}
+                  {Object.entries(byVoterDept).sort((a, b) => a[0].localeCompare(b[0])).map(([deptName, deptVotes]) => {
+                    const uniqueVoters = [...new Set(deptVotes.map(v => v.voter_id))];
+                    return (
+                      <div key={deptName} style={{
+                        marginBottom: '1rem', border: '1px solid #e5e7eb',
+                        borderRadius: '12px', overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          background: 'linear-gradient(135deg, #059669, #10b981)',
+                          color: 'white', padding: '0.75rem 1rem',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>🏢 {deptName}</span>
+                          <span style={{
+                            background: 'rgba(255,255,255,0.25)', padding: '0.2rem 0.6rem',
+                            borderRadius: '20px', fontSize: '0.8rem'
+                          }}>
+                            {uniqueVoters.length} คนโหวต
+                          </span>
+                        </div>
+                        <div style={{ padding: '0.75rem 1rem' }}>
+                          {deptVotes.map((v, idx) => (
+                            <div key={idx} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              padding: '0.5rem 0',
+                              borderBottom: idx < deptVotes.length - 1 ? '1px solid #f3f4f6' : 'none',
+                              fontSize: '0.9rem'
+                            }}>
+                              <div>
+                                <span style={{ fontWeight: '600', color: '#1e293b' }}>{v.voterName}</span>
+                                <span style={{ color: '#9ca3af', marginLeft: '0.5rem', fontSize: '0.78rem' }}>
+                                  {categoryLabels[v.vote_category] || v.vote_category}
+                                </span>
+                              </div>
+                              <div style={{
+                                background: '#f0f9ff', color: '#0369a1',
+                                padding: '0.2rem 0.6rem', borderRadius: '8px',
+                                fontSize: '0.82rem', fontWeight: '600'
+                              }}>
+                                → {v.votedDeptName}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              );
+            })()}
+
+            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowVoteStatus(false)}
+                style={{ padding: '0.5rem 1.5rem' }}
               >
                 ปิด
               </button>

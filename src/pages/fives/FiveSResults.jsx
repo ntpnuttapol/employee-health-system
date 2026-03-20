@@ -156,6 +156,7 @@ export default function FiveSResults() {
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalCleanliness}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalInnovation}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb;font-weight:bold;font-size:1.1em">${dept.totalScore}</td>
+        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb;font-weight:bold;color:#7c3aed">${dept.voteCount > 0 ? dept.voteCount : '-'}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.count}</td>
       </tr>`;
     }).join('');
@@ -181,7 +182,8 @@ export default function FiveSResults() {
     <th>การเปลี่ยนแปลง</th>
     <th>ความสะอาด</th>
     <th>ความท้าทาย</th>
-    <th>คะแนนรวม</th>
+    <th>คะแนนเดิม</th>
+    <th>คะแนนโหวต</th>
     <th>จำนวนครั้ง</th>
   </tr></thead>
   <tbody>${rows}</tbody>
@@ -299,6 +301,7 @@ ${deptSections}
       const deptName = ins.departments?.name || 'ไม่ระบุแผนก';
       if (!map[deptName]) {
         map[deptName] = {
+          id: ins.department_id,
           name: deptName,
           totalImprovement: 0,
           totalCleanliness: 0,
@@ -307,7 +310,8 @@ ${deptSections}
           count: 0,
           latestDate: ins.inspection_date,
           latestScore: ins.total_score,
-          allPhotos: []
+          allPhotos: [],
+          voteCount: 0
         };
       }
       map[deptName].totalImprovement += ins.score_improvement;
@@ -324,8 +328,15 @@ ${deptSections}
       }
     });
 
-    return Object.values(map)
-      .sort((a, b) => b.totalScore - a.totalScore);
+    const arr = Object.values(map);
+    arr.forEach(dept => {
+      dept.voteCount = votes.filter(v => String(v.department_id) === String(dept.id)).length;
+    });
+
+    return arr.sort((a, b) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return b.voteCount - a.voteCount;
+    });
   })();
 
   const total = departmentRanking.length;
@@ -1181,7 +1192,8 @@ ${deptSections}
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>เปลี่ยนแปลง</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>สะอาด</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ท้าทาย</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>คะแนนรวม</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>คะแนนเดิม</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1', background: '#4ade80', color: 'black' }}>คะแนนโหวต</th>
 
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>รูป</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ครั้ง</th>
@@ -1208,6 +1220,9 @@ ${deptSections}
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalInnovation}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: barColor }}>{dept.totalScore}</span>
+                        </td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center', background: rank <= 3 ? 'transparent' : '#f0fdf4' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#16a34a' }}>{dept.voteCount > 0 ? `+${dept.voteCount}` : '-'}</span>
                         </td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           {(dept.allPhotos && dept.allPhotos.length > 0) ? (
@@ -1257,7 +1272,8 @@ ${deptSections}
                     <th style={{ textAlign: 'center' }}>เปลี่ยนแปลง<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
                     <th style={{ textAlign: 'center' }}>สะอาด<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
                     <th style={{ textAlign: 'center' }}>ท้าทาย<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
-                    <th style={{ textAlign: 'center' }}>คะแนนรวม</th>
+                    <th style={{ textAlign: 'center' }}>คะแนนเดิม</th>
+                    <th style={{ textAlign: 'center', color: '#16a34a' }}>คะแนนโหวต</th>
                     <th style={{ textAlign: 'center' }}>รูป</th>
                     <th style={{ textAlign: 'center' }}>ครั้ง</th>
                     <th style={{ width: '140px' }}>กราฟ</th>
@@ -1284,6 +1300,9 @@ ${deptSections}
                         <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalInnovation}</td>
                         <td style={{ textAlign: 'center' }}>
                           <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: barColor }}>{dept.totalScore}</span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#16a34a' }}>{dept.voteCount > 0 ? `+${dept.voteCount}` : '-'}</span>
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           {(dept.allPhotos && dept.allPhotos.length > 0) ? (
@@ -1329,7 +1348,10 @@ ${deptSections}
                         {badge.icon} {rank}
                       </span>
                       <span style={{ fontWeight: 'bold', fontSize: '1rem', flex: 1 }}>{dept.name}</span>
-                      <span style={{ fontWeight: 'bold', fontSize: '1.3rem', color: barColor, flexShrink: 0 }}>{dept.totalScore}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, gap: '2px' }}>
+                        <span style={{ fontWeight: 'bold', fontSize: '1.3rem', color: barColor, lineHeight: 1 }}>{dept.totalScore}</span>
+                        {dept.voteCount > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#16a34a' }}>โหวต +{dept.voteCount}</span>}
+                      </div>
                       {(dept.allPhotos && dept.allPhotos.length > 0) && (
                         <button onClick={() => setGalleryPhotos(dept.allPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.25rem 0.45rem', fontSize: '0.95rem', display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#3b82f6', flexShrink: 0 }}>
                           🔍 <span style={{ fontSize: '0.65rem', fontWeight: 'bold' }}>{dept.allPhotos.length}</span>

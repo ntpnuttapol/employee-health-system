@@ -16,6 +16,22 @@ export default function Sidebar({ onLinkClick }) {
       </div>
 
       <nav className="sidebar-nav" onClick={handleLinkClick}>
+        {/* Portal Home */}
+        <div className="sidebar-section">
+          <a
+            href="http://localhost:8888"
+            className="sidebar-link"
+            style={{
+              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(59, 130, 246, 0.10))',
+              borderLeft: '3px solid #818cf8',
+              marginBottom: '8px',
+            }}
+          >
+            <span className="sidebar-link-icon">🏠</span>
+            <span className="sidebar-link-text">Portal Home</span>
+          </a>
+        </div>
+
         {/* Main Section */}
         <div className="sidebar-section">
           <div className="sidebar-section-title">เมนูหลัก</div>

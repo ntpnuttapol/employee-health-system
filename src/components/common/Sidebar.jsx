@@ -12,26 +12,13 @@ export default function Sidebar({ onLinkClick }) {
     <>
       <div className="sidebar-logo">
         <img src="/pfslogo.png" alt="Logo" className="sidebar-logo-img" />
-        <h1>Polyfoam PFS</h1>
+        <div className="sidebar-logo-copy">
+          <h1>HR Employee</h1>
+          <p>Health & Activity System</p>
+        </div>
       </div>
 
       <nav className="sidebar-nav" onClick={handleLinkClick}>
-        {/* Portal Home */}
-        <div className="sidebar-section">
-          <a
-            href="http://localhost:8888"
-            className="sidebar-link"
-            style={{
-              background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(59, 130, 246, 0.10))',
-              borderLeft: '3px solid #818cf8',
-              marginBottom: '8px',
-            }}
-          >
-            <span className="sidebar-link-icon">🏠</span>
-            <span className="sidebar-link-text">Portal Home</span>
-          </a>
-        </div>
-
         {/* Main Section */}
         <div className="sidebar-section">
           <div className="sidebar-section-title">เมนูหลัก</div>
@@ -126,7 +113,7 @@ export default function Sidebar({ onLinkClick }) {
           <div className="sidebar-user-info">
             <div className="sidebar-user-name">{user?.full_name || user?.username || 'ผู้ใช้งาน'}</div>
             <div className="sidebar-user-role">
-              {user?.employees?.departments?.name || (user?.role === 'Admin' ? 'Administrator' : 'User')}
+              {user?.employees?.departments?.name || (user?.role === 'Admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน')}
             </div>
           </div>
         </div>

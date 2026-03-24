@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useActivity } from '../../contexts/ActivityContext';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function HeaderBar() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activities = [] } = useActivity() || {};
   const { employees = [] } = useMasterData() || {};
   const { user, logout } = useAuth();
@@ -84,8 +85,39 @@ export default function HeaderBar() {
     return `อีก ${diff} วัน`;
   };
 
+  const routeMeta = {
+    '/dashboard': { title: 'ภาพรวมระบบ', subtitle: 'ติดตามกิจกรรม สุขภาพ และการเข้าร่วมของพนักงานแบบเรียลไทม์' },
+    '/users': { title: 'ผู้ใช้งานระบบ', subtitle: 'จัดการสิทธิ์และข้อมูลผู้เข้าใช้งานในระบบ HR Employee' },
+    '/branches': { title: 'ข้อมูลสาขา', subtitle: 'ดูแลโครงสร้างสาขาให้พร้อมใช้งานสำหรับทุกฝ่าย' },
+    '/departments': { title: 'ข้อมูลแผนก', subtitle: 'บริหารโครงสร้างหน่วยงานและการเชื่อมโยงข้อมูลพนักงาน' },
+    '/positions': { title: 'ข้อมูลตำแหน่ง', subtitle: 'กำหนดตำแหน่งงานและการอ้างอิงในระบบกลาง' },
+    '/employees': { title: 'จัดการพนักงาน', subtitle: 'ค้นหา อัปเดต และติดตามสถานะพนักงานได้อย่างรวดเร็ว' },
+    '/activities': { title: 'กิจกรรมพนักงาน', subtitle: 'จัดการกิจกรรม ดูผู้เข้าร่วม และติดตามกำหนดการสำคัญ' },
+    '/activity-scan': { title: 'สแกนเข้าร่วมกิจกรรม', subtitle: 'เช็กอินหน้างานได้ไวผ่าน QR และลดขั้นตอนงานเอกสาร' },
+    '/health-dashboard': { title: 'แดชบอร์ดสุขภาพ', subtitle: 'สรุปแนวโน้มสุขภาพพนักงานในมุมมองเดียว' },
+    '/health-entry': { title: 'บันทึกข้อมูลสุขภาพ', subtitle: 'กรอกข้อมูลสุขภาพได้ง่ายและพร้อมตรวจสอบย้อนหลัง' },
+    '/health-records': { title: 'ประวัติสุขภาพ', subtitle: 'เรียกดูข้อมูลย้อนหลังและค้นหารายการสำคัญได้สะดวก' },
+    '/five-s': { title: 'ตรวจประเมิน 5ส', subtitle: 'บันทึกผลตรวจ 5ส พร้อมติดตามคะแนนแต่ละพื้นที่' },
+    '/five-s-vote': { title: 'โหวตคะแนน 5ส', subtitle: 'ให้คะแนนพื้นที่เด่นและกระตุ้นการมีส่วนร่วมของทีม' },
+    '/five-s-results': { title: 'ผลคะแนน 5ส', subtitle: 'สรุปคะแนน อันดับ และภาพรวมผลการประเมินล่าสุด' },
+    '/profile': { title: 'โปรไฟล์ผู้ใช้งาน', subtitle: 'จัดการข้อมูลส่วนตัวและตรวจสอบสถานะบัญชีของคุณ' }
+  };
+
+  const currentRoute = Object.entries(routeMeta).find(([path]) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`)
+  )?.[1] || {
+    title: 'HR Employee',
+    subtitle: 'ระบบจัดการข้อมูลสุขภาพ กิจกรรม และการมีส่วนร่วมของพนักงาน'
+  };
+
   return (
     <div className="header-bar">
+      <div className="header-context">
+        <span className="header-context-label">HR Employee Workspace</span>
+        <h2 className="header-context-title">{currentRoute.title}</h2>
+        <p className="header-context-subtitle">{currentRoute.subtitle}</p>
+      </div>
+
       {/* Global Search */}
       <div className="header-search" ref={searchRef}>
         <div className="search-input-wrapper">
@@ -157,6 +189,17 @@ export default function HeaderBar() {
             )}
           </div>
         )}
+      </div>
+
+      <div className="header-meta">
+        <div className="header-pill">
+          <span className="header-pill-dot success"></span>
+          <span>{upcomingActivities.length} กิจกรรมใกล้ถึง</span>
+        </div>
+        <div className="header-pill">
+          <span className="header-pill-dot info"></span>
+          <span>{empList.length} พนักงาน</span>
+        </div>
       </div>
 
       {/* Notifications */}
@@ -236,6 +279,12 @@ export default function HeaderBar() {
 
         {showProfileMenu && (
           <div className="header-profile-menu" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="header-profile-menu-item"
+              onClick={() => { setShowProfileMenu(false); window.location.href = 'http://localhost:3000/dashboard'; }}
+            >
+              🏠 <span>กลับไป Portal Hub</span>
+            </div>
             <div
               className="header-profile-menu-item"
               onClick={() => { setShowProfileMenu(false); navigate('/profile'); }}

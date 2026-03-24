@@ -66,18 +66,38 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // NEW: SSO Login from Hub
-  const loginWithSSO = async ({ hubUserId, hubMetadata }) => {
-    console.log('SSO login attempt from Hub:', hubUserId);
+  // NEW: SSO Login Function
+  const loginWithSSO = async ({ hubUserId, hubEmail, hubMetadata }) => {
+    console.log('SSO login attempt:', hubEmail);
 
     try {
-      // หา user ที่มี hub_user_id ตรงกัน
-      const { data: existingUser, error: lookupError } = await supabase
+      // วิธีที่ 1: หา user ที่มี hub_user_id ตรงกัน
+      let { data: existingUser, error: lookupError } = await supabase
         .from('users')
         .select('id, username, full_name, email, role, employee_id, is_active, hub_user_id, employees(id, first_name, last_name, department_id, departments(id, name))')
         .eq('hub_user_id', hubUserId)
         .eq('is_active', true)
         .single();
+
+      // วิธีที่ 2: ถ้าไม่เจอด้วย hub_user_id ให้หาด้วย email
+      if (!existingUser && !lookupError) {
+        const { data: userByEmail, error: emailError } = await supabase
+          .from('users')
+          .select('id, username, full_name, email, role, employee_id, is_active, hub_user_id, employees(id, first_name, last_name, department_id, departments(id, name))')
+          .eq('email', hubEmail)
+          .eq('is_active', true)
+          .single();
+        
+        if (userByEmail) {
+          existingUser = userByEmail;
+          
+          // อัปเดต hub_user_id ให้ user นี้ (เพื่อใช้ครั้งต่อไป)
+          await supabase
+            .from('users')
+            .update({ hub_user_id: hubUserId })
+            .eq('id', userByEmail.id);
+        }
+      }
 
       // ถ้าเจอ user ให้ login
       if (existingUser) {
@@ -88,8 +108,8 @@ export function AuthProvider({ children }) {
         return existingUser;
       }
 
-      // ถ้าไม่เจอ user ให้แจ้ง error - admin ต้อง link account ด้วยตนเอง
-      throw new Error('ไม่พบผู้ใช้งานในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเชื่อมบัญชี');
+      // ถ้าไม่เจอ user ให้แจ้ง error
+      throw new Error('ไม่พบผู้ใช้งานในระบบ กรุณาติดต่อผู้ดูแลระบบเพื่อเพิ่มบัญชีผู้ใช้');
 
     } catch (err) {
       console.error('SSO login error:', err);
@@ -117,7 +137,7 @@ export function AuthProvider({ children }) {
     <AuthContext.Provider value={{
       user,
       login,
-      loginWithSSO,
+      loginWithSSO, // NEW: เพิ่ม function นี้
       logout,
       isAdmin,
       isAuthenticated,

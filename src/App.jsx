@@ -62,15 +62,6 @@ function AppLayout() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        className="mobile-menu-btn"
-        onClick={toggleMobileMenu}
-        aria-label="Toggle menu"
-      >
-        {mobileMenuOpen ? '✕' : '☰'}
-      </button>
-
       {/* Mobile Backdrop */}
       {mobileMenuOpen && (
         <div
@@ -84,7 +75,7 @@ function AppLayout() {
           <Sidebar onLinkClick={closeMobileMenu} />
         </div>
         <main className="main-content" onClick={closeMobileMenu}>
-          <HeaderBar />
+          <HeaderBar onMenuToggle={(e) => { e.stopPropagation(); toggleMobileMenu(); }} isMenuOpen={mobileMenuOpen} />
           <Routes>
             <Route path="/dashboard" element={<DashboardPage />} />
 

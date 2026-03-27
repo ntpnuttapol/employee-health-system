@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { useHealth } from '../../contexts/HealthContext';
 
@@ -13,11 +13,32 @@ export default function HealthDataEntry() {
   });
   const [status, setStatus] = useState({ type: '', message: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [heightAutoFilled, setHeightAutoFilled] = useState(false);
 
   // Filter employees by branch
   const filteredEmployees = selectedBranch 
     ? employees.filter(e => e.branch_id === parseInt(selectedBranch))
     : employees;
+
+  // Auto-fill height from the employee's most recent health record
+  useEffect(() => {
+    if (!selectedEmployee) {
+      setHeightAutoFilled(false);
+      return;
+    }
+
+    // healthRecords is already sorted by recorded_at DESC
+    const latestRecord = healthRecords.find(
+      (r) => String(r.employee_id) === String(selectedEmployee) && r.height
+    );
+
+    if (latestRecord && latestRecord.height) {
+      setFormData((prev) => ({ ...prev, height: String(latestRecord.height) }));
+      setHeightAutoFilled(true);
+    } else {
+      setHeightAutoFilled(false);
+    }
+  }, [selectedEmployee, healthRecords]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +63,7 @@ export default function HealthDataEntry() {
       setFormData({
         bpSystolic: '', bpDiastolic: '', heartRate: '', bloodSugar: '', weight: '', height: '', notes: ''
       });
+      setHeightAutoFilled(false);
       setSelectedEmployee('');
       setRecordDate(new Date().toISOString().split('T')[0]); // Reset to today
       // Scroll to top
@@ -233,13 +255,21 @@ export default function HealthDataEntry() {
                     className="form-input"
                     placeholder="170"
                     value={formData.height}
-                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                    onChange={(e) => {
+                      setFormData({ ...formData, height: e.target.value });
+                      if (heightAutoFilled) setHeightAutoFilled(false);
+                    }}
                     required
                     min="100"
                     max="250"
                   />
                   <span className="input-group-text">cm</span>
                 </div>
+                {heightAutoFilled && (
+                  <div className="text-muted text-sm mt-1" style={{ color: 'var(--apple-blue, #007aff)' }}>
+                    ✅ ดึงค่าส่วนสูงจากบันทึกครั้งล่าสุดอัตโนมัติ
+                  </div>
+                )}
               </div>
             </div>
             {bmi && (

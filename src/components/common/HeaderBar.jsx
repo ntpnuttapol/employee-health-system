@@ -291,7 +291,7 @@ export default function HeaderBar({ onMenuToggle, isMenuOpen }) {
           <div className="header-profile-menu" onClick={(e) => e.stopPropagation()}>
             <div
               className="header-profile-menu-item"
-              onClick={() => { setShowProfileMenu(false); window.location.href = (import.meta.env.VITE_HUB_URL || 'https://pfs-portal-hub.vercel.app') + '/dashboard'; }}
+              onClick={() => { setShowProfileMenu(false); window.location.href = (import.meta.env.VITE_HUB_URL || 'https://polyfoampfs-hub.vercel.app') + '/dashboard'; }}
             >
               🏠 <span>กลับไป Portal Hub</span>
             </div>

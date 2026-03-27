@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // Hub SSO Configuration
-const HUB_URL = import.meta.env.VITE_HUB_URL || 'https://pfs-portal-hub.vercel.app';
+const HUB_URL = import.meta.env.VITE_HUB_URL || 'https://polyfoampfs-hub.vercel.app';
 const HUB_VALIDATE_URL = `${HUB_URL}/api/sso/validate`;
 const SYSTEM_ID = 'hr-employee';
 

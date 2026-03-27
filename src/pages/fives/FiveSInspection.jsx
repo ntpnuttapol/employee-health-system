@@ -38,6 +38,8 @@ export default function FiveSInspection() {
     score_improvement: '',
     score_cleanliness: '',
     score_innovation: '',
+    score_cooperation: '',
+    score_helpfulness: '',
     notes: ''
   });
 
@@ -115,13 +117,15 @@ export default function FiveSInspection() {
   const totalScore = (
     (parseInt(formData.score_improvement) || 0) +
     (parseInt(formData.score_cleanliness) || 0) +
-    (parseInt(formData.score_innovation) || 0)
+    (parseInt(formData.score_innovation) || 0) +
+    (parseInt(formData.score_cooperation) || 0) +
+    (parseInt(formData.score_helpfulness) || 0)
   );
 
   const getRankLabel = (score) => {
-    if (score >= 27) return { label: 'ดีเยี่ยม', color: '#10b981', bg: '#ecfdf5' };
-    if (score >= 21) return { label: 'ดี', color: '#3b82f6', bg: '#eff6ff' };
-    if (score >= 15) return { label: 'ปานกลาง', color: '#f59e0b', bg: '#fffbeb' };
+    if (score >= 45) return { label: 'ดีเยี่ยม', color: '#10b981', bg: '#ecfdf5' };
+    if (score >= 35) return { label: 'ดี', color: '#3b82f6', bg: '#eff6ff' };
+    if (score >= 25) return { label: 'ปานกลาง', color: '#f59e0b', bg: '#fffbeb' };
     return { label: 'ต้องปรับปรุง', color: '#ef4444', bg: '#fef2f2' };
   };
 
@@ -204,7 +208,9 @@ export default function FiveSInspection() {
     const scores = [
       parseInt(formData.score_improvement),
       parseInt(formData.score_cleanliness),
-      parseInt(formData.score_innovation)
+      parseInt(formData.score_innovation),
+      parseInt(formData.score_cooperation),
+      parseInt(formData.score_helpfulness)
     ];
 
     for (const s of scores) {
@@ -247,7 +253,9 @@ export default function FiveSInspection() {
       score_improvement: scores[0],
       score_cleanliness: scores[1],
       score_innovation: scores[2],
-      total_score: scores[0] + scores[1] + scores[2],
+      score_cooperation: scores[3],
+      score_helpfulness: scores[4],
+      total_score: scores[0] + scores[1] + scores[2] + scores[3] + scores[4],
       notes: formData.notes || null,
       photo_urls: photoUrls.length > 0 ? photoUrls : null
     };
@@ -285,6 +293,8 @@ export default function FiveSInspection() {
         score_improvement: '',
         score_cleanliness: '',
         score_innovation: '',
+        score_cooperation: '',
+        score_helpfulness: '',
         notes: ''
       });
       // Clear photos
@@ -303,7 +313,7 @@ export default function FiveSInspection() {
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div className="page-header">
         <h1 className="page-title">🏆 ตรวจประเมิน 5ส</h1>
-        <p className="page-subtitle">กรอกคะแนนการตรวจ 5ส (3 หัวข้อ หัวข้อละ 10 คะแนน รวม 30 คะแนน)</p>
+        <p className="page-subtitle">กรอกคะแนนการตรวจ 5ส (5 หัวข้อ หัวข้อละ 10 คะแนน รวม 50 คะแนน)</p>
       </div>
 
       {status.message && (
@@ -496,6 +506,60 @@ export default function FiveSInspection() {
               </div>
             </div>
 
+            {/* Score 4: Cooperation */}
+            <div className="form-group">
+              <label className="form-label required">4. ความร่วมมือ (Cooperation)</label>
+              <div className="score-row">
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={formData.score_cooperation || 0}
+                  onChange={(e) => setFormData({ ...formData, score_cooperation: e.target.value })}
+                  className="score-range"
+                />
+                <div className="score-number-wrap">
+                  <input
+                    type="number"
+                    className="form-input score-number-input"
+                    value={formData.score_cooperation}
+                    onChange={(e) => setFormData({ ...formData, score_cooperation: e.target.value })}
+                    min="0"
+                    max="10"
+                    required
+                  />
+                  <span className="score-unit">/10</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Score 5: Helpfulness */}
+            <div className="form-group">
+              <label className="form-label required">5. ความช่วยเหลือ (Helpfulness)</label>
+              <div className="score-row">
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  value={formData.score_helpfulness || 0}
+                  onChange={(e) => setFormData({ ...formData, score_helpfulness: e.target.value })}
+                  className="score-range"
+                />
+                <div className="score-number-wrap">
+                  <input
+                    type="number"
+                    className="form-input score-number-input"
+                    value={formData.score_helpfulness}
+                    onChange={(e) => setFormData({ ...formData, score_helpfulness: e.target.value })}
+                    min="0"
+                    max="10"
+                    required
+                  />
+                  <span className="score-unit">/10</span>
+                </div>
+              </div>
+            </div>
+
             {/* Total Score Display */}
             <div style={{
               marginTop: '1.5rem',
@@ -507,7 +571,7 @@ export default function FiveSInspection() {
             }}>
               <div style={{ fontSize: '0.9rem', color: '#6b7280', marginBottom: '0.25rem' }}>คะแนนรวม</div>
               <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: rank.color }}>
-                {totalScore} <span style={{ fontSize: '1rem' }}>/ 30</span>
+                {totalScore} <span style={{ fontSize: '1rem' }}>/ 50</span>
               </div>
               <div style={{
                 display: 'inline-block',

@@ -2354,28 +2354,33 @@ a:hover {
    Apple-Style Mobile Responsive
    ======================================== */
 
-.mobile-menu-btn {
+.mobile-side-toggle {
   display: none;
-  position: fixed;
-  top: calc(0.75rem + env(safe-area-inset-top, 0px));
-  left: calc(0.75rem + env(safe-area-inset-left, 0px));
-  z-index: 1001;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   color: white;
   border: none;
-  font-size: 1.15rem;
+  font-size: 1.1rem;
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(109, 203, 161, 0.35);
+  box-shadow: 0 4px 12px rgba(109, 203, 161, 0.3);
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.15s ease;
+  align-items: center;
+  justify-content: center;
 }
 
-.mobile-menu-btn:active {
+.mobile-side-toggle:active {
   transform: scale(0.9);
+}
+
+.header-context-top-mobile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
 }
 
 .mobile-backdrop {
@@ -2399,7 +2404,7 @@ a:hover {
   .sidebar-link,
   .notification-bell,
   .header-profile,
-  .mobile-menu-btn {
+  .mobile-side-toggle {
     min-height: 44px;
     min-width: 44px;
   }
@@ -2418,10 +2423,8 @@ a:hover {
   }
 
   /* ---- Show mobile menu button ---- */
-  .mobile-menu-btn {
+  .mobile-side-toggle {
     display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   /* ---- Sidebar — iOS-like slide-over sheet ---- */
@@ -2479,7 +2482,7 @@ a:hover {
     }
 
     .header-context-label {
-      margin-bottom: 0.35rem;
+      margin-bottom: 0;
     }
 
     .header-context-title {
@@ -3561,13 +3564,12 @@ body::before {
   color: var(--apple-gray-500) !important;
 }
 
-/* ============================
-   4. MAIN CONTENT
-   ============================ */
-.main-content {
-  margin-left: 280px !important;
-  padding: 1.5rem 2rem !important;
-  background: var(--apple-gray-100) !important;
+@media (min-width: 1025px) {
+  .main-content {
+    margin-left: 280px !important;
+    padding: 1.5rem 2rem !important;
+    background: var(--apple-gray-100) !important;
+  }
 }
 
 /* ============================

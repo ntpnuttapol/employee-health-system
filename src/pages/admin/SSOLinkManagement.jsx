@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
-const HUB_URL = 'http://localhost:3000';
+const HUB_URL = import.meta.env.VITE_HUB_URL || 'https://pfs-portal-hub.vercel.app';
 
 export default function SSOLinkManagement() {
   const [users, setUsers] = useState([]);

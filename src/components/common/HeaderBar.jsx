@@ -4,7 +4,7 @@ import { useActivity } from '../../contexts/ActivityContext';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { useAuth } from '../../contexts/AuthContext';
 
-export default function HeaderBar() {
+export default function HeaderBar({ onMenuToggle, isMenuOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { activities = [] } = useActivity() || {};
@@ -113,7 +113,17 @@ export default function HeaderBar() {
   return (
     <div className="header-bar">
       <div className="header-context">
-        <span className="header-context-label">HR Employee Workspace</span>
+        <div className="header-context-top-mobile">
+          <button 
+            type="button"
+            className="mobile-side-toggle" 
+            onClick={onMenuToggle}
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? '✕' : '☰'}
+          </button>
+          <span className="header-context-label">HR Employee Workspace</span>
+        </div>
         <h2 className="header-context-title">{currentRoute.title}</h2>
         <p className="header-context-subtitle">{currentRoute.subtitle}</p>
       </div>
@@ -281,7 +291,7 @@ export default function HeaderBar() {
           <div className="header-profile-menu" onClick={(e) => e.stopPropagation()}>
             <div
               className="header-profile-menu-item"
-              onClick={() => { setShowProfileMenu(false); window.location.href = 'http://localhost:3000/dashboard'; }}
+              onClick={() => { setShowProfileMenu(false); window.location.href = (import.meta.env.VITE_HUB_URL || 'https://pfs-portal-hub.vercel.app') + '/dashboard'; }}
             >
               🏠 <span>กลับไป Portal Hub</span>
             </div>

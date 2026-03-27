@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-// Hub SSO Configuration - เปลี่ยนเป็น URL จริงของ Hub
-const HUB_VALIDATE_URL = 'http://localhost:3000/api/sso/validate';
+// Hub SSO Configuration
+const HUB_URL = import.meta.env.VITE_HUB_URL || 'https://pfs-portal-hub.vercel.app';
+const HUB_VALIDATE_URL = `${HUB_URL}/api/sso/validate`;
 const SYSTEM_ID = 'hr-employee';
 
 export default function LoginPage() {
@@ -16,6 +17,12 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hasSSOToken = Boolean(searchParams.get('sso_token'));
+
+  // Define Hub Login URL with dynamic redirect
+  const getHubLoginUrl = () => {
+    const redirectUrl = encodeURIComponent(window.location.origin + '/login');
+    return `${HUB_URL}/login?redirect=${redirectUrl}`;
+  };
 
   // Check for SSO token from Hub on page load
   useEffect(() => {
@@ -190,7 +197,7 @@ export default function LoginPage() {
             {!hasSSOToken && (
               <div className="login-sso-section">
                 <a 
-                  href="http://localhost:3000/login?redirect=http://localhost:5173/login"
+                  href={getHubLoginUrl()}
                   className="btn btn-secondary btn-lg login-sso-btn"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

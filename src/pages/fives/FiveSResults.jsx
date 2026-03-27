@@ -231,7 +231,7 @@ export default function FiveSResults() {
             <div style="display:flex;gap:2rem;margin-bottom:0.75rem;flex-wrap:wrap;">
               <span>📅 <strong>วันที่ตรวจ:</strong> ${dateStr}</span>
               <span>👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
-              <span>⭐ <strong>คะแนนรวม:</strong> <strong style="color:#1e3a5f;font-size:1.1em">${ins.total_score}/30</strong></span>
+              <span>⭐ <strong>คะแนนรวม:</strong> <strong style="color:#1e3a5f;font-size:1.1em">${ins.total_score}/50</strong></span>
             </div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               ${photoGrid}
@@ -446,10 +446,12 @@ ${deptSections}
         }}>
           {[
             { label: 'จำนวนการตรวจ', value: filtered.length, unit: 'รายการ', color: '#6366f1', bg: '#eef2ff' },
-            { label: 'เฉลี่ยการเปลี่ยนแปลง', value: (filtered.reduce((s, i) => s + i.score_improvement, 0) / filtered.length).toFixed(1), unit: '/10', color: '#0891b2', bg: '#ecfeff' },
-            { label: 'เฉลี่ยความสะอาด', value: (filtered.reduce((s, i) => s + i.score_cleanliness, 0) / filtered.length).toFixed(1), unit: '/10', color: '#059669', bg: '#ecfdf5' },
-            { label: 'เฉลี่ยความท้าทาย', value: (filtered.reduce((s, i) => s + i.score_innovation, 0) / filtered.length).toFixed(1), unit: '/10', color: '#d97706', bg: '#fffbeb' },
-            { label: 'เฉลี่ยรวมทุกแผนก', value: (filtered.reduce((s, i) => s + i.total_score, 0) / filtered.length).toFixed(1), unit: '/30', color: '#dc2626', bg: '#fef2f2' }
+            { label: 'เฉลี่ยเปลี่ยนแปลง', value: (filtered.reduce((s, i) => s + i.score_improvement, 0) / filtered.length).toFixed(1), unit: '/10', color: '#0891b2', bg: '#ecfeff' },
+            { label: 'เฉลี่ยสะอาด', value: (filtered.reduce((s, i) => s + i.score_cleanliness, 0) / filtered.length).toFixed(1), unit: '/10', color: '#059669', bg: '#ecfdf5' },
+            { label: 'เฉลี่ยท้าทาย', value: (filtered.reduce((s, i) => s + i.score_innovation, 0) / filtered.length).toFixed(1), unit: '/10', color: '#d97706', bg: '#fffbeb' },
+            { label: 'เฉลี่ยร่วมมือ', value: (filtered.reduce((s, i) => s + (i.score_cooperation || 0), 0) / filtered.length).toFixed(1), unit: '/10', color: '#8b5cf6', bg: '#ede9fe' },
+            { label: 'เฉลี่ยช่วยเหลือ', value: (filtered.reduce((s, i) => s + (i.score_helpfulness || 0), 0) / filtered.length).toFixed(1), unit: '/10', color: '#ec4899', bg: '#fce7f3' },
+            { label: 'เฉลี่ยรวม', value: (filtered.reduce((s, i) => s + i.total_score, 0) / filtered.length).toFixed(1), unit: '/50', color: '#dc2626', bg: '#fef2f2' }
           ].map((item, idx) => (
             <div key={idx} className="card" style={{
               textAlign: 'center',
@@ -1618,9 +1620,11 @@ ${deptSections}
                           <th>วันที่</th>
                           <th>แผนก</th>
                           <th>ผู้ตรวจ</th>
-                          <th style={{ textAlign: 'center' }}>การเปลี่ยนแปลง</th>
-                          <th style={{ textAlign: 'center' }}>ความสะอาด</th>
-                          <th style={{ textAlign: 'center' }}>ความท้าทาย</th>
+                          <th style={{ textAlign: 'center' }}>เปลี่ยนแปลง</th>
+                          <th style={{ textAlign: 'center' }}>สะอาด</th>
+                          <th style={{ textAlign: 'center' }}>ท้าทาย</th>
+                          <th style={{ textAlign: 'center' }}>ร่วมมือ</th>
+                          <th style={{ textAlign: 'center' }}>ช่วยเหลือ</th>
                           <th style={{ textAlign: 'center' }}>รวม</th>
                           <th>หมายเหตุ</th>
                           <th style={{ textAlign: 'center', width: '80px' }}>รูป</th>
@@ -1645,7 +1649,9 @@ ${deptSections}
                             <td style={{ textAlign: 'center' }}>{ins.score_improvement}</td>
                             <td style={{ textAlign: 'center' }}>{ins.score_cleanliness}</td>
                             <td style={{ textAlign: 'center' }}>{ins.score_innovation}</td>
-                            <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ins.total_score}/30</td>
+                            <td style={{ textAlign: 'center' }}>{ins.score_cooperation || 0}</td>
+                            <td style={{ textAlign: 'center' }}>{ins.score_helpfulness || 0}</td>
+                            <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ins.total_score}/50</td>
                             <td style={{ fontSize: '0.85rem', color: '#6b7280' }}>{ins.notes || '-'}</td>
                             <td style={{ textAlign: 'center' }}>
                               {(ins.photo_urls && ins.photo_urls.length > 0) ? (
@@ -1685,6 +1691,8 @@ ${deptSections}
                                     score_improvement: ins.score_improvement,
                                     score_cleanliness: ins.score_cleanliness,
                                     score_innovation: ins.score_innovation,
+                                    score_cooperation: ins.score_cooperation || 0,
+                                    score_helpfulness: ins.score_helpfulness || 0,
                                     notes: ins.notes || '',
                                     photo_urls: ins.photo_urls || []
                                   });

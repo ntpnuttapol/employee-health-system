@@ -155,6 +155,8 @@ export default function FiveSResults() {
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalImprovement}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalCleanliness}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalInnovation}</td>
+        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalCooperation}</td>
+        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalHelpfulness}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb;font-weight:bold;font-size:1.1em">${dept.totalScore}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb;font-weight:bold;color:#7c3aed">${dept.voteCount > 0 ? dept.voteCount : '-'}</td>
         <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.count}</td>
@@ -182,7 +184,9 @@ export default function FiveSResults() {
     <th>การเปลี่ยนแปลง</th>
     <th>ความสะอาด</th>
     <th>ความท้าทาย</th>
-    <th>คะแนนเดิม</th>
+    <th>ความร่วมมือ</th>
+    <th>ความช่วยเหลือ</th>
+    <th>คะแนนรวม</th>
     <th>คะแนนโหวต</th>
     <th>จำนวนครั้ง</th>
   </tr></thead>
@@ -242,7 +246,14 @@ export default function FiveSResults() {
             <div style="display:flex;gap:2rem;margin-bottom:0.75rem;flex-wrap:wrap;">
               <span>📅 <strong>วันที่ตรวจ:</strong> ${dateStr}</span>
               <span>👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
-              <span>⭐ <strong>คะแนนรวม:</strong> <strong style="color:#1e3a5f;font-size:1.1em">${ins.total_score}/50</strong></span>
+            </div>
+            <div style="display:flex;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;font-size:0.9em;">
+              <span>🔄 เปลี่ยนแปลง: <strong>${ins.score_improvement}/10</strong></span>
+              <span>🧹 สะอาด: <strong>${ins.score_cleanliness}/10</strong></span>
+              <span>💡 ท้าทาย: <strong>${ins.score_innovation}/10</strong></span>
+              <span>🤝 ร่วมมือ: <strong>${ins.score_cooperation || 0}/10</strong></span>
+              <span>❤️ ช่วยเหลือ: <strong>${ins.score_helpfulness || 0}/10</strong></span>
+              <span>⭐ <strong style="color:#1e3a5f;font-size:1.1em">รวม: ${ins.total_score}/50</strong></span>
             </div>
             ${notesStr}
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
@@ -345,6 +356,8 @@ ${deptSections}
           totalImprovement: 0,
           totalCleanliness: 0,
           totalInnovation: 0,
+          totalCooperation: 0,
+          totalHelpfulness: 0,
           totalScore: 0,
           count: 0,
           latestDate: ins.inspection_date,
@@ -356,6 +369,8 @@ ${deptSections}
       map[deptName].totalImprovement += ins.score_improvement;
       map[deptName].totalCleanliness += ins.score_cleanliness;
       map[deptName].totalInnovation += ins.score_innovation;
+      map[deptName].totalCooperation += (ins.score_cooperation || 0);
+      map[deptName].totalHelpfulness += (ins.score_helpfulness || 0);
       map[deptName].totalScore += ins.total_score;
       map[deptName].count += 1;
       if (ins.photos && ins.photos.length > 0) {

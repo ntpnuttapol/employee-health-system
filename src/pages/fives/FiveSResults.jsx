@@ -199,18 +199,18 @@ export default function FiveSResults() {
     w.onload = () => { w.print(); };
   };
 
-  // ออกรีพอร์ตรูปภาพแยกตามแผนก
+  // ออกรีพอร์ตรูปภาพและหมายเหตุแยกตามแผนก
   const printPhotoReport = () => {
-    // จัดกลุ่มการตรวจที่มีรูปภาพ ตามชื่อแผนก
-    const allWithPhotos = inspections.filter(ins => ins.photo_urls && ins.photo_urls.length > 0);
-    if (allWithPhotos.length === 0) {
-      alert('ยังไม่มีรูปภาพในระบบ กรุณาอัปโหลดรูปภาพก่อนออกรายงาน');
+    // จัดกลุ่มการตรวจที่มีรูปภาพหรือหมายเหตุ ตามชื่อแผนก
+    const allWithPhotosOrNotes = inspections.filter(ins => (ins.photo_urls && ins.photo_urls.length > 0) || (ins.notes && ins.notes.trim() !== ''));
+    if (allWithPhotosOrNotes.length === 0) {
+      alert('ยังไม่มีรูปภาพหรือหมายเหตุในระบบ กรุณาอัปโหลดก่อนออกรายงาน');
       return;
     }
 
     // group by department name
     const grouped = {};
-    allWithPhotos.forEach(ins => {
+    allWithPhotosOrNotes.forEach(ins => {
       const deptName = ins.departments?.name || `แผนก ${ins.department_id}`;
       if (!grouped[deptName]) grouped[deptName] = [];
       grouped[deptName].push(ins);
@@ -223,9 +223,11 @@ export default function FiveSResults() {
     const deptSections = Object.entries(grouped).map(([deptName, records]) => {
       const inspectionBlocks = records.map(ins => {
         const dateStr = new Date(ins.inspection_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-        const photoGrid = ins.photo_urls.map(url =>
+        const photoGrid = ins.photo_urls ? ins.photo_urls.map(url =>
           `<img src="${url}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" />`
-        ).join('');
+        ).join('') : '';
+        const notesStr = ins.notes ? `<div style="margin-bottom: 0.75rem; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; color: #374151; font-size: 0.95em;">💬 <strong>หมายเหตุ / ข้อเสนอแนะ:</strong> ${ins.notes}</div>` : '';
+        
         return `
           <div style="margin-bottom:1.5rem;padding:1rem;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
             <div style="display:flex;gap:2rem;margin-bottom:0.75rem;flex-wrap:wrap;">
@@ -233,6 +235,7 @@ export default function FiveSResults() {
               <span>👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
               <span>⭐ <strong>คะแนนรวม:</strong> <strong style="color:#1e3a5f;font-size:1.1em">${ins.total_score}/50</strong></span>
             </div>
+            ${notesStr}
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               ${photoGrid}
             </div>
@@ -258,7 +261,7 @@ export default function FiveSResults() {
 </style></head><body>
 <div style="text-align:center;margin-bottom:28px;border-bottom:2px solid #1e3a5f;padding-bottom:16px;">
   <img src="/pfslogo.png" style="height:60px;margin-bottom:8px" />
-  <h1>รายงานรูปภาพการตรวจ 5ส แยกตามแผนก</h1>
+  <h1>รายงานรูปภาพและหมายเหตุการตรวจ 5ส</h1>
   <p>Polyfoam PFS — สาขาสุวรรณภูมิ</p>
   <p>พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
 </div>
@@ -427,10 +430,10 @@ ${deptSections}
             <button
               className="btn btn-primary"
               onClick={printPhotoReport}
-              disabled={inspections.filter(i => i.photo_urls && i.photo_urls.length > 0).length === 0}
+              disabled={inspections.filter(i => (i.photo_urls && i.photo_urls.length > 0) || (i.notes && i.notes.trim() !== '')).length === 0}
               style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
             >
-              📸 รูป
+              📸 รูป / หมายเหตุ
             </button>
           </div>
         </div>

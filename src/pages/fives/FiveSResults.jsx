@@ -33,6 +33,8 @@ export default function FiveSResults() {
   const [podiumPhase, setPodiumPhase] = useState(-1);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [galleryPhotos, setGalleryPhotos] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
   const [votes, setVotes] = useState([]);
   const [showVoteResults, setShowVoteResults] = useState(false);
   const [voteRevealIndex, setVoteRevealIndex] = useState(-1); // -1 = not started
@@ -319,7 +321,7 @@ ${deptSections}
         if (!photosError && photosData) {
           photosData.forEach(p => {
             if (!photosMap[p.inspection_id]) photosMap[p.inspection_id] = [];
-            photosMap[p.inspection_id].push({ url: p.url, comment: p.comment || '' });
+            photosMap[p.inspection_id].push({ id: p.id, url: p.url, comment: p.comment || '' });
           });
         } else if (photosError) {
           console.warn('five_s_photos query error (table may not exist yet):', photosError.message);
@@ -335,6 +337,30 @@ ${deptSections}
       setInspections(enriched);
     }
     setLoading(false);
+  };
+
+  const handleSaveComment = async (photoId) => {
+    if (!photoId) return;
+    try {
+      const { error } = await supabase
+        .from('five_s_photos')
+        .update({ comment: editingCommentText })
+        .eq('id', photoId);
+      
+      if (!error) {
+        setGalleryPhotos(prev => prev ? prev.map(p => 
+          (typeof p !== 'string' && p.id === photoId) 
+            ? { ...p, comment: editingCommentText } 
+            : p
+        ) : null);
+        fetchInspections(); // refresh in background to keep data in sync
+      } else {
+        alert('เกิดข้อผิดพลาดในการบันทึกคอมเมนต์: ' + error.message);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setEditingCommentId(null);
   };
 
   useEffect(() => {
@@ -1858,20 +1884,44 @@ ${deptSections}
                         />
                       )}
                     </div>
-                    {comment && (
-                      <div style={{
-                        fontSize: '0.75rem',
-                        color: '#374151',
-                        padding: '0.3rem 0.5rem',
-                        background: '#f0f9ff',
-                        borderRadius: '6px',
-                        border: '1px solid #bfdbfe',
-                        wordBreak: 'break-word',
-                        lineHeight: 1.3
-                      }}>
-                        💬 {comment}
-                      </div>
-                    )}
+                    {(comment || photoItem.id) ? (
+                      editingCommentId === photoItem.id ? (
+                        <div style={{ padding: '0.4rem', background: '#f0f9ff', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                          <textarea
+                            value={editingCommentText}
+                            onChange={(e) => setEditingCommentText(e.target.value)}
+                            style={{ 
+                              width: '100%', fontSize: '0.75rem', padding: '6px', 
+                              borderRadius: '4px', border: '1px solid #93c5fd', 
+                              minHeight: '40px', outline: 'none', resize: 'vertical'
+                            }}
+                            placeholder="เพิ่มคอมเมนต์..."
+                            autoFocus
+                          />
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '6px', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setEditingCommentId(null)} style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#e5e7eb', color: '#4b5563', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>ยกเลิก</button>
+                            <button onClick={() => handleSaveComment(photoItem.id)} style={{ fontSize: '0.7rem', padding: '4px 8px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>บันทึก</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{
+                          fontSize: '0.75rem', color: '#374151', padding: '0.3rem 0.5rem',
+                          background: '#f0f9ff', borderRadius: '6px', border: '1px solid #bfdbfe',
+                          wordBreak: 'break-word', lineHeight: 1.3, position: 'relative',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                          minHeight: '32px'
+                        }}>
+                          <span style={{flex: 1}}>💬 {comment || <span style={{color: '#9ca3af', fontStyle:'italic'}}>ไม่มีคอมเมนต์</span>}</span>
+                          {photoItem.id && (
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setEditingCommentId(photoItem.id); setEditingCommentText(comment); }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0 0 0 4px', opacity: 0.6, flexShrink: 0 }}
+                              title="แก้ไขคอมเมนต์"
+                            >✏️</button>
+                          )}
+                        </div>
+                      )
+                    ) : null}
                   </div>
                 );
               })}

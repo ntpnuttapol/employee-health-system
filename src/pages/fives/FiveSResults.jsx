@@ -144,6 +144,8 @@ export default function FiveSResults() {
       ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
       : 'ทั้งหมด';
 
+    const total = departmentRanking.length;
+
     const rows = departmentRanking.map((dept, idx) => {
       const rank = idx + 1;
       let rowBg = '#fff';

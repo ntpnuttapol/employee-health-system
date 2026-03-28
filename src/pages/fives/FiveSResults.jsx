@@ -1713,7 +1713,7 @@ ${deptSections}
                           <th style={{ textAlign: 'center' }}>รวม</th>
                           <th>หมายเหตุ</th>
                           <th style={{ textAlign: 'center', width: '80px' }}>รูป</th>
-                          <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>
+                          {isAdmin && <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1757,47 +1757,49 @@ ${deptSections}
                                 <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
                               )}
                             </td>
-                            <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                              <button
-                                className="btn btn-secondary"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', marginRight: '0.25rem' }}
-                                title="แก้ไข"
-                                onClick={() => {
-                                  // หาแผนกของผู้ตรวจจากชื่อ
-                                  const inspectorEmp = activeEmployees.find(
-                                    e => `${e.first_name} ${e.last_name}` === ins.inspector_name
-                                  );
-                                  setEditItem(ins);
-                                  setEditForm({
-                                    department_id: ins.department_id,
-                                    inspector_department_id: inspectorEmp?.department_id || '',
-                                    inspector_name: ins.inspector_name,
-                                    inspection_date: ins.inspection_date,
-                                    score_improvement: ins.score_improvement,
-                                    score_cleanliness: ins.score_cleanliness,
-                                    score_innovation: ins.score_innovation,
-                                    score_cooperation: ins.score_cooperation || 0,
-                                    score_helpfulness: ins.score_helpfulness || 0,
-                                    notes: ins.notes || '',
-                                    photo_urls: ins.photo_urls || []
-                                  });
-                                }}
-                              >
-                                ✏️
-                              </button>
-                              <button
-                                className="btn btn-secondary"
-                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
-                                title="ลบ"
-                                onClick={async () => {
-                                  if (!window.confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
-                                  await supabase.from('five_s_inspections').delete().eq('id', ins.id);
-                                  fetchInspections();
-                                }}
-                              >
-                                🗑️
-                              </button>
-                            </td>
+                            {isAdmin && (
+                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', marginRight: '0.25rem' }}
+                                  title="แก้ไข"
+                                  onClick={() => {
+                                    // หาแผนกของผู้ตรวจจากชื่อ
+                                    const inspectorEmp = activeEmployees.find(
+                                      e => `${e.first_name} ${e.last_name}` === ins.inspector_name
+                                    );
+                                    setEditItem(ins);
+                                    setEditForm({
+                                      department_id: ins.department_id,
+                                      inspector_department_id: inspectorEmp?.department_id || '',
+                                      inspector_name: ins.inspector_name,
+                                      inspection_date: ins.inspection_date,
+                                      score_improvement: ins.score_improvement,
+                                      score_cleanliness: ins.score_cleanliness,
+                                      score_innovation: ins.score_innovation,
+                                      score_cooperation: ins.score_cooperation || 0,
+                                      score_helpfulness: ins.score_helpfulness || 0,
+                                      notes: ins.notes || '',
+                                      photo_urls: ins.photo_urls || []
+                                    });
+                                  }}
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                                  title="ลบ"
+                                  onClick={async () => {
+                                    if (!window.confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
+                                    await supabase.from('five_s_inspections').delete().eq('id', ins.id);
+                                    fetchInspections();
+                                  }}
+                                >
+                                  🗑️
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
@@ -1912,13 +1914,13 @@ ${deptSections}
                           minHeight: '32px'
                         }}>
                           <span style={{flex: 1}}>💬 {comment || <span style={{color: '#9ca3af', fontStyle:'italic'}}>ไม่มีคอมเมนต์</span>}</span>
-                          {photoItem.id && (
+                          {(isAdmin && photoItem.id) ? (
                             <button 
                               onClick={(e) => { e.stopPropagation(); setEditingCommentId(photoItem.id); setEditingCommentText(comment); }}
                               style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.9rem', padding: '0 0 0 4px', opacity: 0.6, flexShrink: 0 }}
                               title="แก้ไขคอมเมนต์"
                             >✏️</button>
-                          )}
+                          ) : null}
                         </div>
                       )
                     ) : null}

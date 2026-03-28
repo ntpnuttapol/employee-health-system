@@ -139,6 +139,21 @@ CREATE TABLE health_records (
 );
 
 -- ========================================
+-- 5S Inspection Photos (รูปภาพการตรวจ 5ส พร้อม comment)
+-- ========================================
+-- Note: five_s_inspections table is created in Supabase
+CREATE TABLE five_s_photos (
+    id BIGSERIAL PRIMARY KEY,
+    inspection_id BIGINT NOT NULL REFERENCES five_s_inspections(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    comment TEXT DEFAULT '',
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_five_s_photos_inspection_id ON five_s_photos(inspection_id);
+
+-- ========================================
 -- Sample Data
 -- ========================================
 

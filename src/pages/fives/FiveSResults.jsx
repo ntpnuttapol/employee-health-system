@@ -202,7 +202,7 @@ export default function FiveSResults() {
   // ออกรีพอร์ตรูปภาพและหมายเหตุแยกตามแผนก
   const printPhotoReport = () => {
     // จัดกลุ่มการตรวจที่มีรูปภาพหรือหมายเหตุ ตามชื่อแผนก
-    const allWithPhotosOrNotes = inspections.filter(ins => (ins.photo_urls && ins.photo_urls.length > 0) || (ins.notes && ins.notes.trim() !== ''));
+    const allWithPhotosOrNotes = inspections.filter(ins => (ins.photos && ins.photos.length > 0) || (ins.photo_urls && ins.photo_urls.length > 0) || (ins.notes && ins.notes.trim() !== ''));
     if (allWithPhotosOrNotes.length === 0) {
       alert('ยังไม่มีรูปภาพหรือหมายเหตุในระบบ กรุณาอัปโหลดก่อนออกรายงาน');
       return;
@@ -223,9 +223,12 @@ export default function FiveSResults() {
     const deptSections = Object.entries(grouped).map(([deptName, records]) => {
       const inspectionBlocks = records.map(ins => {
         const dateStr = new Date(ins.inspection_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-        const photoGrid = ins.photo_urls ? ins.photo_urls.map(url =>
-          `<img src="${url}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" />`
-        ).join('') : '';
+        const photoGrid = (ins.photos && ins.photos.length > 0 ? ins.photos : (ins.photo_urls || []).map(url => ({ url, comment: '' }))).map(photo =>
+          `<div style="display:inline-block;text-align:center;margin:4px;">
+            <img src="${photo.url}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;display:block;" />
+            ${photo.comment ? `<div style="font-size:0.78em;color:#374151;margin-top:4px;max-width:160px;word-break:break-word;">💬 ${photo.comment}</div>` : ''}
+          </div>`
+        ).join('');
         const notesStr = ins.notes ? `<div style="margin-bottom: 0.75rem; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; color: #374151; font-size: 0.95em;">💬 <strong>หมายเหตุ / ข้อเสนอแนะ:</strong> ${ins.notes}</div>` : '';
         
         return `
@@ -283,7 +286,32 @@ ${deptSections}
 
     const { data, error } = await query;
     if (!error) {
-      setInspections(data || []);
+      const inspectionsData = data || [];
+      
+      // Fetch photos from five_s_photos table for all inspections
+      const inspectionIds = inspectionsData.map(i => i.id).filter(Boolean);
+      let photosMap = {};
+      if (inspectionIds.length > 0) {
+        const { data: photosData } = await supabase
+          .from('five_s_photos')
+          .select('*')
+          .in('inspection_id', inspectionIds)
+          .order('sort_order', { ascending: true });
+        if (photosData) {
+          photosData.forEach(p => {
+            if (!photosMap[p.inspection_id]) photosMap[p.inspection_id] = [];
+            photosMap[p.inspection_id].push({ url: p.url, comment: p.comment || '' });
+          });
+        }
+      }
+      
+      // Attach photos to inspections
+      const enriched = inspectionsData.map(ins => ({
+        ...ins,
+        photos: photosMap[ins.id] || []
+      }));
+      
+      setInspections(enriched);
     }
     setLoading(false);
   };
@@ -322,8 +350,11 @@ ${deptSections}
       map[deptName].totalInnovation += ins.score_innovation;
       map[deptName].totalScore += ins.total_score;
       map[deptName].count += 1;
-      if (ins.photo_urls && ins.photo_urls.length > 0) {
-        map[deptName].allPhotos = [...map[deptName].allPhotos, ...ins.photo_urls];
+      if (ins.photos && ins.photos.length > 0) {
+        map[deptName].allPhotos = [...map[deptName].allPhotos, ...ins.photos];
+      } else if (ins.photo_urls && ins.photo_urls.length > 0) {
+        // Fallback for old data without five_s_photos records
+        map[deptName].allPhotos = [...map[deptName].allPhotos, ...ins.photo_urls.map(url => ({ url, comment: '' }))];
       }
       if (ins.inspection_date > map[deptName].latestDate) {
         map[deptName].latestDate = ins.inspection_date;
@@ -430,7 +461,7 @@ ${deptSections}
             <button
               className="btn btn-primary"
               onClick={printPhotoReport}
-              disabled={inspections.filter(i => (i.photo_urls && i.photo_urls.length > 0) || (i.notes && i.notes.trim() !== '')).length === 0}
+              disabled={inspections.filter(i => (i.photos && i.photos.length > 0) || (i.photo_urls && i.photo_urls.length > 0) || (i.notes && i.notes.trim() !== '')).length === 0}
               style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
             >
               📸 รูป / หมายเหตุ
@@ -1657,9 +1688,9 @@ ${deptSections}
                             <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ins.total_score}/50</td>
                             <td style={{ fontSize: '0.85rem', color: '#6b7280' }}>{ins.notes || '-'}</td>
                             <td style={{ textAlign: 'center' }}>
-                              {(ins.photo_urls && ins.photo_urls.length > 0) ? (
+                              {((ins.photos && ins.photos.length > 0) || (ins.photo_urls && ins.photo_urls.length > 0)) ? (
                                 <button
-                                  onClick={() => setGalleryPhotos(ins.photo_urls)}
+                                  onClick={() => setGalleryPhotos(ins.photos && ins.photos.length > 0 ? ins.photos : (ins.photo_urls || []).map(u => ({ url: u, comment: '' })))}
                                   style={{
                                     background: 'none', border: '1px solid #e5e7eb',
                                     borderRadius: '8px', cursor: 'pointer',
@@ -1667,9 +1698,9 @@ ${deptSections}
                                     display: 'inline-flex', alignItems: 'center', gap: '4px',
                                     color: '#3b82f6'
                                   }}
-                                  title={`ดูรูป ${ins.photo_urls.length} รูป`}
+                                  title={`ดูรูป ${(ins.photos || ins.photo_urls || []).length} รูป`}
                                 >
-                                  🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{ins.photo_urls.length}</span>
+                                  🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{(ins.photos && ins.photos.length > 0 ? ins.photos : ins.photo_urls || []).length}</span>
                                 </button>
                               ) : (
                                 <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
@@ -1778,25 +1809,43 @@ ${deptSections}
               gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
               gap: '0.75rem'
             }}>
-              {galleryPhotos.map((url, idx) => {
+              {galleryPhotos.map((photoItem, idx) => {
+                const url = typeof photoItem === 'string' ? photoItem : photoItem.url;
+                const comment = typeof photoItem === 'string' ? '' : (photoItem.comment || '');
                 const ext = String(url).split('.').pop().split('?')[0].toLowerCase();
                 const isHeic = ['heic', 'heif'].includes(ext);
                 return (
-                  <div key={idx} style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    onClick={() => { if (!isHeic) { setLightboxUrl(url); setGalleryPhotos(null); } }}>
-                    {isHeic ? (
-                      <div style={{ textAlign: 'center', padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
-                        <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📷</div>
-                        <div>ไฟล์ HEIC</div>
-                        <a href={url} download style={{ color: '#3b82f6', fontSize: '0.7rem' }} onClick={e => e.stopPropagation()}>ดาวน์โหลด</a>
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div style={{ aspectRatio: '1', borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => { if (!isHeic) { setLightboxUrl(url); setGalleryPhotos(null); } }}>
+                      {isHeic ? (
+                        <div style={{ textAlign: 'center', padding: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                          <div style={{ fontSize: '2rem', marginBottom: '0.25rem' }}>📷</div>
+                          <div>ไฟล์ HEIC</div>
+                          <a href={url} download style={{ color: '#3b82f6', fontSize: '0.7rem' }} onClick={e => e.stopPropagation()}>ดาวน์โหลด</a>
+                        </div>
+                      ) : (
+                        <img
+                          src={url}
+                          alt={`รูป ${idx + 1}`}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="text-align:center;padding:0.5rem;font-size:0.75rem;color:#6b7280"><div style="font-size:2rem">⚠️</div>โหลดรูปไม่ได้</div>'; }}
+                        />
+                      )}
+                    </div>
+                    {comment && (
+                      <div style={{
+                        fontSize: '0.75rem',
+                        color: '#374151',
+                        padding: '0.3rem 0.5rem',
+                        background: '#f0f9ff',
+                        borderRadius: '6px',
+                        border: '1px solid #bfdbfe',
+                        wordBreak: 'break-word',
+                        lineHeight: 1.3
+                      }}>
+                        💬 {comment}
                       </div>
-                    ) : (
-                      <img
-                        src={url}
-                        alt={`รูป ${idx + 1}`}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.innerHTML = '<div style="text-align:center;padding:0.5rem;font-size:0.75rem;color:#6b7280"><div style="font-size:2rem">⚠️</div>โหลดรูปไม่ได้</div>'; }}
-                      />
                     )}
                   </div>
                 );

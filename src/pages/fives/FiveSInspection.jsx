@@ -155,7 +155,8 @@ export default function FiveSInspection() {
       toAdd.push({
         file: finalFile,
         preview: URL.createObjectURL(finalFile),
-        id: `${Date.now()}-${Math.random()}`
+        id: `${Date.now()}-${Math.random()}`,
+        comment: ''
       });
     }
     setPhotos(prev => [...prev, ...toAdd]);
@@ -171,12 +172,17 @@ export default function FiveSInspection() {
     });
   };
 
+  const updatePhotoComment = (id, comment) => {
+    setPhotos(prev => prev.map(p => p.id === id ? { ...p, comment } : p));
+  };
+
   const uploadPhotos = async () => {
-    if (!photos.length) return { urls: [], uploadError: null };
+    if (!photos.length) return { photosData: [], uploadError: null };
     setUploadingPhotos(true);
-    const urls = [];
+    const photosData = [];
     let uploadError = null;
-    for (const photo of photos) {
+    for (let i = 0; i < photos.length; i++) {
+      const photo = photos[i];
       const ext = photo.file.name.split('.').pop();
       const fileName = `five-s/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error } = await supabase.storage
@@ -186,14 +192,20 @@ export default function FiveSInspection() {
         const { data: urlData } = supabase.storage
           .from('five-s-images')
           .getPublicUrl(fileName);
-        if (urlData?.publicUrl) urls.push(urlData.publicUrl);
+        if (urlData?.publicUrl) {
+          photosData.push({
+            url: urlData.publicUrl,
+            comment: photo.comment || '',
+            sort_order: i
+          });
+        }
       } else {
         console.error('Upload error:', error);
         uploadError = error.message || JSON.stringify(error);
       }
     }
     setUploadingPhotos(false);
-    return { urls, uploadError };
+    return { photosData, uploadError };
   };
 
   // ---- Submit ----
@@ -237,7 +249,7 @@ export default function FiveSInspection() {
     setStatus({ type: '', message: '' });
 
     // อัพโหลดรูปก่อน
-    const { urls: photoUrls, uploadError } = await uploadPhotos();
+    const { photosData, uploadError } = await uploadPhotos();
 
     if (uploadError) {
       setStatus({ type: 'error', message: `❌ อัปโหลดรูปไม่สำเร็จ: ${uploadError}` });
@@ -257,13 +269,26 @@ export default function FiveSInspection() {
       score_helpfulness: scores[4],
       total_score: scores[0] + scores[1] + scores[2] + scores[3] + scores[4],
       notes: formData.notes || null,
-      photo_urls: photoUrls.length > 0 ? photoUrls : null
+      photo_urls: photosData.length > 0 ? photosData.map(p => p.url) : null
     };
 
     const { data, error } = await supabase.from('five_s_inspections').insert([insertData]).select();
 
     if (!error) {
-      setStatus({ type: 'success', message: `บันทึกผลการตรวจ 5ส เรียบร้อยแล้ว${photoUrls.length > 0 ? ` (แนบรูป ${photoUrls.length} รูป)` : ''}` });
+      // บันทึกรูปลงตาราง five_s_photos (พร้อม comment)
+      if (photosData.length > 0 && data?.[0]?.id) {
+        const photoRows = photosData.map(p => ({
+          inspection_id: data[0].id,
+          url: p.url,
+          comment: p.comment,
+          sort_order: p.sort_order
+        }));
+        const { error: photoError } = await supabase.from('five_s_photos').insert(photoRows);
+        if (photoError) {
+          console.error('Photo insert error:', photoError);
+        }
+      }
+      setStatus({ type: 'success', message: `บันทึกผลการตรวจ 5ส เรียบร้อยแล้ว${photosData.length > 0 ? ` (แนบรูป ${photosData.length} รูป)` : ''}` });
       
       // Update monthInspections state, avoiding duplicates
       setMonthInspections(prev => {
@@ -663,25 +688,46 @@ export default function FiveSInspection() {
               </div>
             )}
 
-            {/* Photo Preview Grid */}
+            {/* Photo Preview Grid with Comment */}
             {photos.length > 0 && (
               <div className="photo-preview-grid">
                 {photos.map(photo => (
-                  <div key={photo.id} className="photo-thumb">
-                    <img
-                      src={photo.preview}
-                      alt="preview"
-                      className="photo-thumb-img"
-                      onClick={() => setLightboxUrl(photo.preview)}
+                  <div key={photo.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <div className="photo-thumb">
+                      <img
+                        src={photo.preview}
+                        alt="preview"
+                        className="photo-thumb-img"
+                        onClick={() => setLightboxUrl(photo.preview)}
+                      />
+                      <button
+                        type="button"
+                        className="photo-thumb-remove"
+                        onClick={() => removePhoto(photo.id)}
+                        title="ลบรูป"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="💬 comment..."
+                      value={photo.comment}
+                      onChange={(e) => updatePhotoComment(photo.id, e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '0.3rem 0.5rem',
+                        fontSize: '0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        outline: 'none',
+                        background: '#f9fafb',
+                        color: '#374151',
+                        transition: 'border-color 0.2s'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+                      onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
                     />
-                    <button
-                      type="button"
-                      className="photo-thumb-remove"
-                      onClick={() => removePhoto(photo.id)}
-                      title="ลบรูป"
-                    >
-                      ✕
-                    </button>
                   </div>
                 ))}
               </div>

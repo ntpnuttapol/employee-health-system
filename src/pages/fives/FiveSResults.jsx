@@ -201,8 +201,9 @@ export default function FiveSResults() {
 
   // ออกรีพอร์ตรูปภาพและหมายเหตุแยกตามแผนก
   const printPhotoReport = () => {
-    // จัดกลุ่มการตรวจที่มีรูปภาพหรือหมายเหตุ ตามชื่อแผนก
-    const allWithPhotosOrNotes = inspections.filter(ins => (ins.photos && ins.photos.length > 0) || (ins.photo_urls && ins.photo_urls.length > 0) || (ins.notes && ins.notes.trim() !== ''));
+    // จัดกลุ่มการตรวจที่มีรูปภาพหรือหมายเหตุ ตามชื่อแผนก (กรองตามวันที่)
+    const dataToReport = filterDate ? filtered : inspections;
+    const allWithPhotosOrNotes = dataToReport.filter(ins => (ins.photos && ins.photos.length > 0) || (ins.photo_urls && ins.photo_urls.length > 0) || (ins.notes && ins.notes.trim() !== ''));
     if (allWithPhotosOrNotes.length === 0) {
       alert('ยังไม่มีรูปภาพหรือหมายเหตุในระบบ กรุณาอัปโหลดก่อนออกรายงาน');
       return;
@@ -223,10 +224,15 @@ export default function FiveSResults() {
     const deptSections = Object.entries(grouped).map(([deptName, records]) => {
       const inspectionBlocks = records.map(ins => {
         const dateStr = new Date(ins.inspection_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
-        const photoGrid = (ins.photos && ins.photos.length > 0 ? ins.photos : (ins.photo_urls || []).map(url => ({ url, comment: '' }))).map(photo =>
-          `<div style="display:inline-block;text-align:center;margin:4px;">
+        // รวมรูปจาก photos (five_s_photos table) + fallback ไป photo_urls
+        const allPhotos = ins.photos && ins.photos.length > 0 
+          ? ins.photos 
+          : (ins.photo_urls || []).map(url => ({ url, comment: '' }));
+        
+        const photoGrid = allPhotos.map((photo, pIdx) =>
+          `<div style="display:inline-block;vertical-align:top;text-align:center;margin:6px;max-width:180px;">
             <img src="${photo.url}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;display:block;" />
-            ${photo.comment ? `<div style="font-size:0.78em;color:#374151;margin-top:4px;max-width:160px;word-break:break-word;">💬 ${photo.comment}</div>` : ''}
+            ${photo.comment ? `<div style="font-size:0.8em;color:#1e40af;margin-top:4px;padding:3px 6px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;max-width:160px;word-break:break-word;text-align:left;">💬 ${photo.comment}</div>` : ''}
           </div>`
         ).join('');
         const notesStr = ins.notes ? `<div style="margin-bottom: 0.75rem; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; color: #374151; font-size: 0.95em;">💬 <strong>หมายเหตุ / ข้อเสนอแนะ:</strong> ${ins.notes}</div>` : '';
@@ -292,16 +298,18 @@ ${deptSections}
       const inspectionIds = inspectionsData.map(i => i.id).filter(Boolean);
       let photosMap = {};
       if (inspectionIds.length > 0) {
-        const { data: photosData } = await supabase
+        const { data: photosData, error: photosError } = await supabase
           .from('five_s_photos')
           .select('*')
           .in('inspection_id', inspectionIds)
           .order('sort_order', { ascending: true });
-        if (photosData) {
+        if (!photosError && photosData) {
           photosData.forEach(p => {
             if (!photosMap[p.inspection_id]) photosMap[p.inspection_id] = [];
             photosMap[p.inspection_id].push({ url: p.url, comment: p.comment || '' });
           });
+        } else if (photosError) {
+          console.warn('five_s_photos query error (table may not exist yet):', photosError.message);
         }
       }
       

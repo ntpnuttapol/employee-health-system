@@ -501,6 +501,242 @@ a:hover {
   margin-top: var(--spacing-lg);
 }
 
+/* ========================================
+   Dashboard — Glassmorphism Redesign (db-*)
+   ======================================== */
+
+.db-wrapper {
+  padding-bottom: 2rem;
+}
+
+.db-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+
+/* ── Quick Stats Row ── */
+.db-quick-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+/* Glass card shared */
+.db-glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 24px rgba(80, 110, 200, 0.08), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.db-glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(80, 110, 200, 0.14), 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+}
+
+/* Numbers grid inside glass card */
+.db-nums-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 24px;
+}
+
+.db-num-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-num-value {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+.db-num-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.db-sparkline {
+  width: 56px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+/* Welcome card */
+.db-welcome-card {
+  background: linear-gradient(135deg, rgba(220, 235, 255, 0.88) 0%, rgba(235, 225, 255, 0.88) 100%);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.96);
+  border-radius: 20px;
+  padding: 22px 24px;
+  box-shadow: 0 4px 24px rgba(80, 110, 200, 0.1);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.db-welcome-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(80, 110, 200, 0.16);
+}
+
+.db-welcome-text h2 {
+  font-size: clamp(18px, 2.5vw, 22px);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  margin: 0 0 4px;
+}
+
+.db-welcome-role {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.db-welcome-btns {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.db-btn-blue, .db-btn-teal {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 16px;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  border: none;
+}
+
+.db-btn-blue {
+  background: #3b7fff;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(59, 127, 255, 0.35);
+}
+.db-btn-blue:hover { background: #2a6dee; transform: translateY(-1px); color: #fff; }
+
+.db-btn-teal {
+  background: #0ea5c8;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(14, 165, 200, 0.35);
+}
+.db-btn-teal:hover { background: #0891b0; transform: translateY(-1px); color: #fff; }
+
+.db-welcome-illus {
+  flex-shrink: 0;
+  width: 110px;
+}
+
+/* ── Main Status Grid ── */
+.db-status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.db-status-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 20px;
+  padding: 20px 20px 14px;
+  box-shadow: 0 4px 20px rgba(80, 110, 200, 0.07);
+  transition: transform 0.22s ease;
+  animation: dbFadeUp 0.4s ease both;
+}
+
+.db-status-card:hover { transform: translateY(-2px); }
+
+@keyframes dbFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.db-status-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.db-status-num {
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.db-status-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+.db-status-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.db-status-icon.icon-teal   { background: rgba(34, 211, 176, 0.15); color: #10b981; }
+.db-status-icon.icon-green  { background: rgba(74, 222, 128, 0.15); color: #22c55e; }
+.db-status-icon.icon-blue   { background: rgba(96, 165, 250, 0.15); color: #3b82f6; }
+.db-status-icon.icon-purple { background: rgba(167, 139, 250, 0.15); color: #8b5cf6; }
+.db-status-icon.icon-orange { background: rgba(251, 191, 36, 0.15); color: #f59e0b; }
+.db-status-icon.icon-purple2 { background: rgba(196, 181, 253, 0.2); color: #8b5cf6; }
+
+.db-mini-chart {
+  width: 100%;
+  height: 50px;
+  margin-top: 6px;
+  display: block;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .db-quick-stats-row { grid-template-columns: 1fr; }
+  .db-status-grid     { grid-template-columns: repeat(2, 1fr); }
+  .db-welcome-illus   { display: none; }
+}
+
+@media (max-width: 560px) {
+  .db-status-grid     { grid-template-columns: 1fr; }
+  .db-nums-grid       { grid-template-columns: 1fr 1fr; }
+}
+
+/* ========================================
+   (Legacy dashboard sections below)
+   ======================================== */
+
 .dashboard-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.75fr);

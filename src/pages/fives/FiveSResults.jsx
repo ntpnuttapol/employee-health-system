@@ -140,7 +140,7 @@ export default function FiveSResults() {
     return () => timers.forEach(clearTimeout);
   }, [showPodium, fireConfetti]);
 
-  // ออกรีพอร์ต PDF
+  // ออกรีพอร์ต PDF (Premium Modern Table)
   const printReport = () => {
     const dateLabel = filterDate
       ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -148,56 +148,163 @@ export default function FiveSResults() {
 
     const total = departmentRanking.length;
 
+    // Helper: กำหนดสถานะตามอันดับ
+    const getStatus = (rank) => {
+      if (rank <= 3) return 'excellent';
+      if (rank <= Math.ceil(total * 0.6)) return 'good';
+      if (rank <= Math.ceil(total * 0.8)) return 'warning';
+      return 'danger';
+    };
+
+    // Helper: สีจุดสถานะ
+    const getStatusDotStyle = (status) => {
+      switch(status) {
+        case 'excellent': return 'background:#10b981;box-shadow:0 0 6px rgba(16,185,129,0.5);';
+        case 'good': return 'background:#3b82f6;';
+        case 'warning': return 'background:#f59e0b;';
+        case 'danger': return 'background:#ef4444;box-shadow:0 0 6px rgba(239,68,68,0.5);';
+        default: return 'background:#94a3b8;';
+      }
+    };
+
+    // Helper: สี progress bar
+    const getBarColor = (status) => {
+      switch(status) {
+        case 'excellent': return '#10b981';
+        case 'good': return '#3b82f6';
+        case 'warning': return '#f59e0b';
+        case 'danger': return '#ef4444';
+        default: return '#94a3b8';
+      }
+    };
+
+    // Helper: ไอคอนอันดับ
+    const getRankIcon = (rank) => {
+      if (rank === 1) return '🏆';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return `<span style="font-weight:700;color:#64748b;">${rank}</span>`;
+    };
+
     const rows = departmentRanking.map((dept, idx) => {
       const rank = idx + 1;
-      let rowBg = '#fff';
-      if (rank <= 3) rowBg = '#f0fdf4';
-      if (total >= 5 && rank > total - 2) rowBg = '#fef2f2';
-      return `<tr style="background:${rowBg}">
-        <td style="text-align:center;font-weight:bold;padding:8px;border:1px solid #e5e7eb">${rank}</td>
-        <td style="font-weight:bold;padding:8px;border:1px solid #e5e7eb">${dept.name}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalImprovement}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalCleanliness}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalInnovation}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalCooperation}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.totalHelpfulness}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb;font-weight:bold;font-size:1.1em">${dept.totalScore}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb;font-weight:bold;color:#7c3aed">${dept.voteCount > 0 ? dept.voteCount : '-'}</td>
-        <td style="text-align:center;padding:8px;border:1px solid #e5e7eb">${dept.count}</td>
+      const status = getStatus(rank);
+      const maxScore = dept.count * 50;
+      const pct = maxScore > 0 ? Math.round((dept.totalScore / maxScore) * 100) : 0;
+      const hoverBg = rank % 2 === 0 ? '#fafbfc' : '#fff';
+
+      return `<tr style="background:${hoverBg};border-bottom:1px solid #f1f5f9;">
+        <!-- อันดับ -->
+        <td style="padding:14px 10px;text-align:center;font-size:18px;">${getRankIcon(rank)}</td>
+        <!-- แผนก + จุดสถานะ -->
+        <td style="padding:14px 12px;font-weight:600;color:#1e293b;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0;${getStatusDotStyle(status)}"></span>
+            <span>${dept.name}</span>
+          </div>
+        </td>
+        <!-- คะแนนย่อย -->
+        <td style="padding:14px 10px;text-align:center;color:#475569;">${dept.totalImprovement}</td>
+        <td style="padding:14px 10px;text-align:center;color:#475569;">${dept.totalCleanliness}</td>
+        <td style="padding:14px 10px;text-align:center;color:#475569;">${dept.totalInnovation}</td>
+        <td style="padding:14px 10px;text-align:center;color:#475569;">${dept.totalCooperation}</td>
+        <td style="padding:14px 10px;text-align:center;color:#475569;">${dept.totalHelpfulness}</td>
+        <!-- โหวต -->
+        <td style="padding:14px 10px;text-align:center;color:#94a3b8;">${dept.voteCount > 0 ? dept.voteCount : '-'}</td>
+        <!-- ครั้ง -->
+        <td style="padding:14px 10px;text-align:center;color:#475569;">${dept.count}</td>
+        <!-- คะแนนรวม (ไฮไลท์) -->
+        <td style="padding:14px 16px;text-align:center;background:#f8fafc;">
+          <span style="font-size:20px;font-weight:900;color:#1e293b;">${dept.totalScore}</span>
+        </td>
+        <!-- ประสิทธิภาพ -->
+        <td style="padding:14px 12px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;font-weight:700;color:#334155;width:36px;text-align:right;">${pct}%</span>
+            <div style="flex:1;height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;border:1px solid rgba(0,0,0,0.04);">
+              <div style="width:${pct}%;height:100%;background:${getBarColor(status)};border-radius:3px;"></div>
+            </div>
+          </div>
+        </td>
       </tr>`;
     }).join('');
 
     const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>รายงานผลคะแนน 5ส</title>
+<html><head><meta charset="utf-8"><title>รายงานสรุปผลคะแนนการตรวจ 5ส</title>
 <style>
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  body { font-family: 'Sarabun', 'Segoe UI', sans-serif; padding: 20px; color: #111; }
-  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-  th { background: #1e3a5f; color: #fff; padding: 10px 8px; border: 1px solid #1e3a5f; font-size: 0.9em; }
+  @media print { 
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; padding: 0; margin: 0; }
+    .report-container { box-shadow: none !important; margin: 0 !important; max-width: 100% !important; border: none !important; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Sarabun', 'Segoe UI', 'Helvetica Neue', sans-serif; padding: 0; margin: 0; color: #0f172a; font-size: 14px; background: #f1f5f9; }
+  table { width: 100%; border-collapse: collapse; }
 </style></head><body>
-<div style="text-align:center;margin-bottom:24px">
-  <img src="/pfslogo.png" style="height:60px;margin-bottom:8px" />
-  <h1 style="margin:0;font-size:1.5em;color:#1e3a5f">รายงานผลคะแนนการตรวจ 5ส</h1>
-  <p style="margin:4px 0 0;color:#6b7280;font-size:0.95em">Polyfoam PFS — สาขาสุวรรณภูมิ</p>
-  <p style="margin:4px 0 0;color:#6b7280;font-size:0.9em">ประจำวันที่: ${dateLabel} | จำนวนแผนกที่ตรวจ: ${departmentRanking.length} แผนก</p>
-</div>
-<table>
-  <thead><tr>
-    <th style="width:60px">อันดับ</th>
-    <th>แผนก</th>
-    <th>การเปลี่ยนแปลง</th>
-    <th>ความสะอาด</th>
-    <th>ความท้าทาย</th>
-    <th>ความร่วมมือ</th>
-    <th>ความช่วยเหลือ</th>
-    <th>คะแนนรวม</th>
-    <th>คะแนนโหวต</th>
-    <th>จำนวนครั้ง</th>
-  </tr></thead>
-  <tbody>${rows}</tbody>
-</table>
-<div style="margin-top:24px;text-align:center;color:#9ca3af;font-size:0.8em">
-  พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+<div class="report-container" style="max-width:960px;margin:24px auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.06);border-radius:16px;border:1px solid #e2e8f0;padding:32px 40px;">
+  
+  <!-- HEADER -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid #f1f5f9;">
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div style="width:48px;height:48px;background:#ecfdf5;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid rgba(16,185,129,0.15);">🏢</div>
+      <div>
+        <h1 style="margin:0 0 3px;font-size:20px;font-weight:800;color:#0f172a;">รายงานสรุปผลคะแนนการตรวจ 5ส</h1>
+        <p style="margin:0;font-size:13px;color:#64748b;font-weight:500;">Polyfoam PFS — สาขาสุวรรณภูมิ</p>
+      </div>
+    </div>
+    <div style="text-align:right;font-size:13px;color:#64748b;">
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:4px;">
+        <span>📅</span><span>วันที่ตรวจ: <strong style="color:#334155;">${dateLabel}</strong></span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;">
+        <span>📋</span><span>จำนวน: <strong style="color:#334155;">${total} แผนก</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <table>
+    <thead>
+      <tr style="border-bottom:2px solid #e2e8f0;">
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;width:50px;">อันดับ</th>
+        <th style="padding:12px 12px;text-align:left;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">แผนก</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">เปลี่ยนแปลง</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">สะอาด</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">ท้าทาย</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">ร่วมมือ</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">ช่วยเหลือ</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">โหวต</th>
+        <th style="padding:12px 10px;text-align:center;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;">ครั้ง</th>
+        <th style="padding:12px 16px;text-align:center;font-size:10px;font-weight:800;color:#059669;text-transform:uppercase;letter-spacing:0.5px;background:#f8fafc;border-radius:8px 8px 0 0;">คะแนนรวม</th>
+        <th style="padding:12px 12px;text-align:left;font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;width:140px;">ประสิทธิภาพ</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+
+  <!-- LEGEND -->
+  <div style="margin-top:24px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:center;font-size:11px;color:#64748b;border-top:1px solid #f1f5f9;padding-top:16px;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#10b981;display:inline-block;box-shadow:0 0 6px rgba(16,185,129,0.5);"></span>
+      <span>ดีเยี่ยม (Top 3)</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block;"></span>
+      <span>มาตรฐาน</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>
+      <span>เฝ้าระวัง</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;box-shadow:0 0 6px rgba(239,68,68,0.5);"></span>
+      <span>ต้องปรับปรุงด่วน</span>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="margin-top:16px;text-align:center;font-size:11px;color:#94a3b8;">
+    พิมพ์จากระบบประเมิน 5ส • ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+  </div>
 </div>
 </body></html>`;
 

@@ -207,7 +207,7 @@ export default function FiveSResults() {
     w.onload = () => { w.print(); };
   };
 
-  // ออกรีพอร์ตรูปภาพและหมายเหตุแยกตามแผนก
+  // ออกรีพอร์ตรูปภาพและหมายเหตุแยกตามแผนก (Premium Design)
   const printPhotoReport = () => {
     // จัดกลุ่มการตรวจที่มีรูปภาพหรือหมายเหตุ ตามชื่อแผนก (กรองตามวันที่)
     const dataToReport = filterDate ? filtered : inspections;
@@ -229,6 +229,21 @@ export default function FiveSResults() {
       ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
       : 'ทั้งหมด';
 
+    // Helper: สร้าง score card พร้อม progress bar
+    const makeScoreCard = (emoji, label, value, max, barColor) => {
+      const pct = Math.round((value / max) * 100);
+      return `<div style="flex:1;min-width:80px;background:#f9fafb;border:1px solid #f0f0f0;border-radius:8px;padding:8px 6px;text-align:center;position:relative;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:4px;">
+          <span style="font-size:11px;">${emoji}</span>
+          <span style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;">${label}</span>
+        </div>
+        <div style="font-size:15px;font-weight:900;color:#1f2937;">${value}<span style="font-size:10px;font-weight:400;color:#9ca3af;margin-left:1px;">/${max}</span></div>
+        <div style="position:absolute;bottom:0;left:0;width:100%;height:3px;background:#e5e7eb;">
+          <div style="width:${pct}%;height:3px;background:${barColor};border-radius:0 2px 0 0;"></div>
+        </div>
+      </div>`;
+    };
+
     const deptSections = Object.entries(grouped).map(([deptName, records]) => {
       const inspectionBlocks = records.map(ins => {
         const dateStr = new Date(ins.inspection_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -236,60 +251,118 @@ export default function FiveSResults() {
         const allPhotos = ins.photos && ins.photos.length > 0 
           ? ins.photos 
           : (ins.photo_urls || []).map(url => ({ url, comment: '' }));
-        
-        const photoGrid = allPhotos.map((photo, pIdx) =>
-          `<div style="display:inline-block;vertical-align:top;text-align:center;margin:6px;max-width:180px;">
-            <img src="${photo.url}" style="width:160px;height:160px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;display:block;" />
-            ${photo.comment ? `<div style="font-size:0.8em;color:#1e40af;margin-top:4px;padding:3px 6px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:4px;max-width:160px;word-break:break-word;text-align:left;">💬 ${photo.comment}</div>` : ''}
-          </div>`
-        ).join('');
-        const notesStr = ins.notes ? `<div style="margin-bottom: 0.75rem; padding: 0.75rem; background: #fff; border-radius: 8px; border: 1px solid #e5e7eb; color: #374151; font-size: 0.95em;">💬 <strong>หมายเหตุ / ข้อเสนอแนะ:</strong> ${ins.notes}</div>` : '';
-        
+
+        // Score cards row
+        const scoreCards = [
+          makeScoreCard('🔄', 'เปลี่ยนแปลง', ins.score_improvement, 10, '#3b82f6'),
+          makeScoreCard('✨', 'สะอาด', ins.score_cleanliness, 10, '#10b981'),
+          makeScoreCard('🎯', 'ท้าทาย', ins.score_innovation, 10, '#f59e0b'),
+          makeScoreCard('🤝', 'ร่วมมือ', ins.score_cooperation || 0, 10, '#f97316'),
+          makeScoreCard('❤️', 'ช่วยเหลือ', ins.score_helpfulness || 0, 10, '#ef4444'),
+        ].join('');
+
+        // Notes section
+        const notesStr = ins.notes 
+          ? `<div style="margin-bottom:16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:8px;">
+              <span style="font-size:14px;flex-shrink:0;margin-top:1px;">💬</span>
+              <div style="font-size:13px;">
+                <span style="font-weight:700;color:#92400e;margin-right:6px;">ข้อเสนอแนะหลัก:</span>
+                <span style="color:#a16207;">${ins.notes}</span>
+              </div>
+            </div>` 
+          : '';
+
+        // Photo list — side-by-side thumbnail + caption (like the mockup)
+        const photoList = allPhotos.length > 0 
+          ? `<div>
+              <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:4px;">
+                📷 รายการรูปภาพจากการตรวจ (${allPhotos.length})
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:10px;">
+                ${allPhotos.map((photo, pIdx) => `
+                  <div style="display:flex;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px;gap:10px;break-inside:avoid;">
+                    <div style="width:80px;height:100px;flex-shrink:0;border-radius:6px;overflow:hidden;background:#f3f4f6;border:1px solid #f0f0f0;">
+                      <img src="${photo.url}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'text-align:center;padding:20px 4px;font-size:11px;color:#9ca3af;\\'>⚠️<br>โหลดไม่ได้</div>';" />
+                    </div>
+                    <div style="flex:1;display:flex;flex-direction:column;padding:2px 0;">
+                      <span style="font-size:10px;font-weight:700;background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:3px;display:inline-block;width:fit-content;margin-bottom:6px;">ภาพที่ ${pIdx + 1}</span>
+                      <p style="font-size:12px;color:#374151;line-height:1.5;margin:0;word-break:break-word;">
+                        ${photo.comment ? photo.comment : '<span style="color:#9ca3af;font-style:italic;">ไม่มีคำอธิบาย</span>'}
+                      </p>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>` 
+          : '';
+
         return `
-          <div style="margin-bottom:1.5rem;padding:1rem;background:#f9fafb;border-radius:10px;border:1px solid #e5e7eb;">
-            <div style="display:flex;gap:2rem;margin-bottom:0.75rem;flex-wrap:wrap;">
-              <span>📅 <strong>วันที่ตรวจ:</strong> ${dateStr}</span>
-              <span>👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
+          <div style="break-inside:avoid;page-break-inside:avoid;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
+            <!-- Header bar -->
+            <div style="background:#f9fafb;padding:10px 16px;border-bottom:1px solid #e5e7eb;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;">
+              <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:13px;">
+                <span style="color:#374151;display:flex;align-items:center;gap:4px;">📅 <strong>วันที่ตรวจ:</strong> ${dateStr}</span>
+                <span style="color:#374151;display:flex;align-items:center;gap:4px;">👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;background:#d1fae5;border:1px solid #a7f3d0;padding:4px 10px;border-radius:6px;">
+                <span style="font-size:12px;">⭐</span>
+                <span style="font-weight:800;color:#065f46;font-size:13px;">รวม: ${ins.total_score}/50</span>
+              </div>
             </div>
-            <div style="display:flex;gap:1rem;margin-bottom:0.75rem;flex-wrap:wrap;font-size:0.9em;">
-              <span>🔄 เปลี่ยนแปลง: <strong>${ins.score_improvement}/10</strong></span>
-              <span>🧹 สะอาด: <strong>${ins.score_cleanliness}/10</strong></span>
-              <span>💡 ท้าทาย: <strong>${ins.score_innovation}/10</strong></span>
-              <span>🤝 ร่วมมือ: <strong>${ins.score_cooperation || 0}/10</strong></span>
-              <span>❤️ ช่วยเหลือ: <strong>${ins.score_helpfulness || 0}/10</strong></span>
-              <span>⭐ <strong style="color:#1e3a5f;font-size:1.1em">รวม: ${ins.total_score}/50</strong></span>
-            </div>
-            ${notesStr}
-            <div style="display:flex;flex-wrap:wrap;gap:10px;">
-              ${photoGrid}
+            <!-- Body -->
+            <div style="padding:16px;">
+              <!-- Score cards -->
+              <div style="display:flex;gap:8px;margin-bottom:16px;">
+                ${scoreCards}
+              </div>
+              <!-- Notes -->
+              ${notesStr}
+              <!-- Photos -->
+              ${photoList}
             </div>
           </div>`;
       }).join('');
 
       return `
-        <div style="page-break-inside:avoid;margin-bottom:2.5rem;">
-          <h2 style="background:#1e3a5f;color:#fff;padding:0.6rem 1rem;border-radius:8px;font-size:1.1em;margin-bottom:1rem;">
-            📁 แผนก: ${deptName} (${records.length} รายการ)
-          </h2>
+        <div style="margin-bottom:32px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="background:#1e293b;color:#fff;padding:5px 7px;border-radius:6px;font-size:13px;display:flex;align-items:center;">📁</div>
+            <h2 style="margin:0;font-size:16px;font-weight:800;color:#1e293b;">แผนก: ${deptName}</h2>
+            <span style="font-size:12px;color:#6b7280;background:#f3f4f6;padding:2px 8px;border-radius:10px;">${records.length} รายการ</span>
+            <div style="flex:1;height:1px;background:#e5e7eb;margin-left:8px;"></div>
+          </div>
           ${inspectionBlocks}
         </div>`;
     }).join('');
 
     const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>รายงานรูปภาพการตรวจ 5ส</title>
+<html><head><meta charset="utf-8"><title>รายงานสรุปรูปภาพและคอมเมนต์การตรวจ 5ส</title>
 <style>
-  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-  body { font-family: 'Sarabun', 'Segoe UI', sans-serif; padding: 24px; color: #111; font-size: 14px; }
-  h1 { margin: 0; font-size: 1.5em; color: #1e3a5f; }
-  p { margin: 4px 0; color: #6b7280; }
+  @media print { 
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; padding: 0; margin: 0; }
+    .report-container { box-shadow: none !important; margin: 0 !important; max-width: 100% !important; border: none !important; border-top: none !important; }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Sarabun', 'Segoe UI', 'Helvetica Neue', sans-serif; padding: 0; margin: 0; color: #111; font-size: 14px; background: #f3f4f6; }
 </style></head><body>
-<div style="text-align:center;margin-bottom:28px;border-bottom:2px solid #1e3a5f;padding-bottom:16px;">
-  <img src="/pfslogo.png" style="height:60px;margin-bottom:8px" />
-  <h1>รายงานรูปภาพและหมายเหตุการตรวจ 5ส</h1>
-  <p>Polyfoam PFS — สาขาสุวรรณภูมิ</p>
-  <p>พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+<div class="report-container" style="max-width:800px;margin:24px auto;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.08);border-radius:12px;border-top:6px solid #059669;padding:32px;">
+  
+  <!-- HEADER -->
+  <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #f3f4f6;display:flex;flex-direction:column;align-items:center;">
+    <div style="width:50px;height:50px;background:#ecfdf5;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:10px;border:1px solid #a7f3d0;box-shadow:0 2px 4px rgba(5,150,105,0.1);">🏢</div>
+    <h1 style="margin:0 0 4px;font-size:20px;font-weight:800;color:#111;">รายงานสรุปรูปภาพและคอมเมนต์การตรวจ 5ส</h1>
+    <p style="margin:0 0 2px;font-size:14px;color:#6b7280;font-weight:500;">Polyfoam PFS — สาขาสุวรรณภูมิ</p>
+    <p style="margin:8px 0 0;font-size:11px;color:#9ca3af;background:#f9fafb;padding:4px 12px;border-radius:20px;">ประจำวันที่: ${dateLabel} · พิมพ์เมื่อ ${new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+  </div>
+
+  <!-- BODY -->
+  ${deptSections}
+
+  <!-- FOOTER -->
+  <div style="margin-top:40px;padding-top:16px;border-top:1px solid #e5e7eb;text-align:center;font-size:11px;color:#9ca3af;">
+    เอกสารฉบับนี้สร้างโดยระบบรายงานอัตโนมัติ • Polyfoam PFS — สาขาสุวรรณภูมิ
+  </div>
 </div>
-${deptSections}
 </body></html>`;
 
     const w = window.open('', '_blank');

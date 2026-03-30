@@ -19,7 +19,7 @@ export default function HealthRecords() {
   // Edit Modal State
   const [editingRecord, setEditingRecord] = useState(null);
   const [editFormData, setEditFormData] = useState({
-    bpSystolic: '', bpDiastolic: '', heartRate: '', bloodSugar: '', weight: '', height: '', notes: ''
+    recordDatetime: '', bpSystolic: '', bpDiastolic: '', heartRate: '', bloodSugar: '', weight: '', height: '', notes: ''
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editStatus, setEditStatus] = useState({ type: '', message: '' });
@@ -181,7 +181,16 @@ export default function HealthRecords() {
 
   const handleEditClick = (record) => {
     setEditingRecord(record);
+    
+    let formattedDatetime = '';
+    if (record.recorded_at) {
+      const d = new Date(record.recorded_at);
+      const pad = (num) => String(num).padStart(2, '0');
+      formattedDatetime = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
     setEditFormData({
+      recordDatetime: formattedDatetime,
       bpSystolic: record.blood_pressure_systolic || '',
       bpDiastolic: record.blood_pressure_diastolic || '',
       heartRate: record.heart_rate || '',
@@ -202,6 +211,10 @@ export default function HealthRecords() {
       employeeId: editingRecord.employee_id,
       ...editFormData
     };
+
+    if (editFormData.recordDatetime) {
+      payload.recordedAt = new Date(editFormData.recordDatetime).toISOString();
+    }
 
     const result = await updateHealthRecord(editingRecord.id, payload);
 
@@ -418,6 +431,17 @@ export default function HealthRecords() {
             )}
 
             <form onSubmit={handleEditSubmit}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label required">วันที่และเวลาตรวจ</label>
+                <input
+                  type="datetime-local"
+                  className="form-input"
+                  value={editFormData.recordDatetime}
+                  onChange={(e) => setEditFormData({ ...editFormData, recordDatetime: e.target.value })}
+                  required
+                />
+              </div>
+
               <div className="form-row" style={{ marginBottom: '1rem' }}>
                 <div className="form-group" style={{ marginBottom: '0' }}>
                   <label className="form-label required">ความดัน Systolic</label>

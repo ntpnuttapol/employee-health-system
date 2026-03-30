@@ -109,6 +109,10 @@ export function HealthProvider({ children }) {
         notes: record.notes
       };
 
+      if (record.recordedAt) {
+        dbRecord.recorded_at = record.recordedAt;
+      }
+
       const { error } = await supabase
         .from('health_records')
         .update(dbRecord)

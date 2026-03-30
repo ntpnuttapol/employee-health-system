@@ -8,13 +8,21 @@ import html2canvas from 'html2canvas';
 import { formatDateTimeForPDF } from '../../utils/pdfUtils';
 
 export default function HealthRecords() {
-  const { healthRecords, loading } = useHealth();
+  const { healthRecords, loading, updateHealthRecord } = useHealth();
   const { departments, branches } = useMasterData();
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Edit Modal State
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    bpSystolic: '', bpDiastolic: '', heartRate: '', bloodSugar: '', weight: '', height: '', notes: ''
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editStatus, setEditStatus] = useState({ type: '', message: '' });
 
   const filteredRecords = healthRecords.filter(record => {
     // Search by name or employee code
@@ -108,6 +116,7 @@ export default function HealthRecords() {
             <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">ความดัน</th>
             <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">ชีพจร</th>
             <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">น้ำตาล</th>
+            <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">น้ำหนัก</th>
             <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">BMI</th>
             <th style="padding: 8px; border: 1px solid #ddd; text-align: center;">วันที่</th>
           </tr>
@@ -126,6 +135,7 @@ export default function HealthRecords() {
               </td>
               <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${record.heart_rate || '-'}</td>
               <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${record.blood_sugar || '-'}</td>
+              <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${record.weight || '-'}</td>
               <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">${calculateBMI(record.weight, record.height)}</td>
               <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px;">
                 ${new Date(record.recorded_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}
@@ -167,6 +177,41 @@ export default function HealthRecords() {
     } finally {
       document.body.removeChild(container);
     }
+  };
+
+  const handleEditClick = (record) => {
+    setEditingRecord(record);
+    setEditFormData({
+      bpSystolic: record.blood_pressure_systolic || '',
+      bpDiastolic: record.blood_pressure_diastolic || '',
+      heartRate: record.heart_rate || '',
+      bloodSugar: record.blood_sugar || '',
+      weight: record.weight || '',
+      height: record.height || '',
+      notes: record.notes || ''
+    });
+    setEditStatus({ type: '', message: '' });
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditSubmitting(true);
+    setEditStatus({ type: '', message: '' });
+
+    const payload = {
+      employeeId: editingRecord.employee_id,
+      ...editFormData
+    };
+
+    const result = await updateHealthRecord(editingRecord.id, payload);
+
+    if (result.success) {
+      setEditStatus({ type: 'success', message: 'อัปเดตข้อมูลเรียบร้อยแล้ว' });
+      setTimeout(() => setEditingRecord(null), 1500);
+    } else {
+      setEditStatus({ type: 'error', message: 'เกิดข้อผิดพลาดในการบันทึก: ' + (result.error?.message || 'Unknown error') });
+    }
+    setEditSubmitting(false);
   };
 
   return (
@@ -291,14 +336,16 @@ export default function HealthRecords() {
                 <th>ความดัน (mmHg)</th>
                 <th>หัวใจ (bpm)</th>
                 <th>น้ำตาล (mg/dL)</th>
+                <th>น้ำหนัก (kg)</th>
                 <th>BMI</th>
                 <th>หมายเหตุ</th>
+                <th style={{ textAlign: 'center' }}>จัดการ</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>กำลังโหลดข้อมูล...</td>
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>กำลังโหลดข้อมูล...</td>
                 </tr>
               ) : filteredRecords.length > 0 ? (
                 filteredRecords.map((record) => (
@@ -315,13 +362,23 @@ export default function HealthRecords() {
                     </td>
                     <td>{record.heart_rate}</td>
                     <td>{record.blood_sugar || '-'}</td>
+                    <td>{record.weight || '-'}</td>
                     <td>{calculateBMI(record.weight, record.height)}</td>
                     <td className="text-muted">{record.notes || '-'}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="btn btn-sm btn-secondary" 
+                        onClick={() => handleEditClick(record)}
+                        title="แก้ไขข้อมูล"
+                      >
+                        ✏️ แก้ไข
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7">
+                  <td colSpan="8">
                     <div className="empty-state">
                       <div className="empty-state-icon">📄</div>
                       <div className="empty-state-title">ไม่พบประวัติสุขภาพ</div>
@@ -333,6 +390,127 @@ export default function HealthRecords() {
           </table>
         </div>
       </div>
+
+      {/* Edit Form Modal */}
+      {editingRecord && (
+        <div className="modal-overlay">
+          <div className="card" style={{ width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="page-header" style={{ marginBottom: '1rem' }}>
+              <div>
+                <h3 className="card-title">✏️ แก้ไขข้อมูลสุขภาพ</h3>
+                <p className="card-subtitle mt-1">
+                  {editingRecord.employees?.first_name} {editingRecord.employees?.last_name} ({formatDate(editingRecord.recorded_at)})
+                </p>
+              </div>
+              <button 
+                className="btn btn-secondary btn-icon" 
+                onClick={() => setEditingRecord(null)}
+                style={{ fontSize: '1.2rem', padding: '0.2rem' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {editStatus.message && (
+              <div className={`alert alert-${editStatus.type}`} style={{ marginBottom: '1rem' }}>
+                {editStatus.type === 'success' ? '✅' : '⚠️'} {editStatus.message}
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit}>
+              <div className="form-row" style={{ marginBottom: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label className="form-label required">ความดัน Systolic</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editFormData.bpSystolic}
+                    onChange={(e) => setEditFormData({ ...editFormData, bpSystolic: e.target.value })}
+                    required min="50" max="250"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label className="form-label required">ความดัน Diastolic</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editFormData.bpDiastolic}
+                    onChange={(e) => setEditFormData({ ...editFormData, bpDiastolic: e.target.value })}
+                    required min="30" max="150"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row" style={{ marginBottom: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label className="form-label required">ชีพจร (bpm)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editFormData.heartRate}
+                    onChange={(e) => setEditFormData({ ...editFormData, heartRate: e.target.value })}
+                    required min="30" max="200"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label className="form-label">น้ำตาลในเลือด</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Optional"
+                    value={editFormData.bloodSugar}
+                    onChange={(e) => setEditFormData({ ...editFormData, bloodSugar: e.target.value })}
+                    min="50" max="500"
+                  />
+                </div>
+              </div>
+
+              <div className="form-row" style={{ marginBottom: '1rem' }}>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label className="form-label required">น้ำหนัก (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    className="form-input"
+                    value={editFormData.weight}
+                    onChange={(e) => setEditFormData({ ...editFormData, weight: e.target.value })}
+                    required min="20" max="200"
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '0' }}>
+                  <label className="form-label required">ส่วนสูง (cm)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    value={editFormData.height}
+                    onChange={(e) => setEditFormData({ ...editFormData, height: e.target.value })}
+                    required min="100" max="250"
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">หมายเหตุ</label>
+                <textarea
+                  className="form-textarea"
+                  rows="2"
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                ></textarea>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setEditingRecord(null)}>
+                  ยกเลิก
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editSubmitting}>
+                  {editSubmitting ? 'กำลังบันทึก...' : 'บันทึกการแก้ไข'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

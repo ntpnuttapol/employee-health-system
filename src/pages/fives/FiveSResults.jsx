@@ -42,6 +42,9 @@ export default function FiveSResults() {
   const [voteDetails, setVoteDetails] = useState([]);
   const [loadingVoteDetails, setLoadingVoteDetails] = useState(false);
 
+  // ตรวจสอบว่าเป็นวันย้อนหลังหรือไม่
+  const isPastDate = filterDate && filterDate < todayStr;
+
   // Edit Window State
   const [editWindow, setEditWindow] = useState(null); // current active edit window for filterDate
   const [editWindowLoading, setEditWindowLoading] = useState(false);
@@ -818,14 +821,22 @@ export default function FiveSResults() {
                     🔒 ปิดสิทธิ์แก้ไข
                   </button>
                 ) : (
-                  <button
-                    className="btn btn-primary"
-                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
-                    onClick={() => { if (window.confirm('เปิดสิทธิ์แก้ไขคะแนนสำหรับวันที่ ' + filterDate + '?\n(ทุกคนจะแก้ไขคะแนนได้ภายใน 24 ชม.)')) openEditWindow(); }}
-                    disabled={editWindowLoading}
-                  >
-                    🔓 เปิดสิทธิ์แก้ไข (24 ชม.)
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {isPastDate && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', fontStyle: 'italic' }}>
+                        * ไม่สามารถเปิดสิทธิ์ย้อนหลังได้
+                      </span>
+                    )}
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+                      onClick={() => { if (window.confirm('เปิดสิทธิ์แก้ไขคะแนนสำหรับวันที่ ' + filterDate + '?\n(ทุกคนจะแก้ไขคะแนนได้ภายใน 24 ชม.)')) openEditWindow(); }}
+                      disabled={editWindowLoading || isPastDate}
+                      title={isPastDate ? "ไม่สามารถเปิดสิทธิ์แก้ไขคะแนนของวันในอดีตได้" : "เปิดสิทธิ์แก้ไข 24 ช.ม."}
+                    >
+                      🔓 เปิดสิทธิ์แก้ไข (24 ชม.)
+                    </button>
+                  </div>
                 )}
               </div>
             )}

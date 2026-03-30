@@ -6,7 +6,7 @@ import confetti from 'canvas-confetti';
 
 export default function FiveSResults() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
 
   // ล็อกเฉพาะสาขาสุวรรณภูมิ
   const suvarnabhumiBranch = (branches || []).find(b => b.name.includes('สุวรรณภูมิ'));
@@ -41,6 +41,86 @@ export default function FiveSResults() {
   const [showVoteStatus, setShowVoteStatus] = useState(false);
   const [voteDetails, setVoteDetails] = useState([]);
   const [loadingVoteDetails, setLoadingVoteDetails] = useState(false);
+
+  // Edit Window State
+  const [editWindow, setEditWindow] = useState(null); // current active edit window for filterDate
+  const [editWindowLoading, setEditWindowLoading] = useState(false);
+
+  // Check if edit window is currently open for the selected date
+  const isEditWindowOpen = editWindow && editWindow.is_active && new Date(editWindow.expires_at) > new Date();
+
+  // Fetch edit window for the selected date
+  const fetchEditWindow = useCallback(async (date) => {
+    if (!date) { setEditWindow(null); return; }
+    setEditWindowLoading(true);
+    const { data, error } = await supabase
+      .from('five_s_edit_windows')
+      .select('*')
+      .eq('inspection_date', date)
+      .eq('is_active', true)
+      .order('opened_at', { ascending: false })
+      .limit(1);
+    if (!error && data && data.length > 0) {
+      // Check if still within time window
+      const win = data[0];
+      if (new Date(win.expires_at) > new Date()) {
+        setEditWindow(win);
+      } else {
+        // Expired — auto-deactivate
+        await supabase.from('five_s_edit_windows').update({ is_active: false }).eq('id', win.id);
+        setEditWindow(null);
+      }
+    } else {
+      setEditWindow(null);
+    }
+    setEditWindowLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (filterDate) fetchEditWindow(filterDate);
+  }, [filterDate, fetchEditWindow]);
+
+  // Admin: Open edit window (24 hours)
+  const openEditWindow = async () => {
+    if (!user || !filterDate) return;
+    const now = new Date();
+    const expires = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +24 hrs
+    const { data, error } = await supabase
+      .from('five_s_edit_windows')
+      .insert({
+        inspection_date: filterDate,
+        opened_by: user.id,
+        opened_at: now.toISOString(),
+        expires_at: expires.toISOString(),
+        is_active: true
+      })
+      .select();
+    if (!error && data) {
+      setEditWindow(data[0]);
+    } else {
+      alert('เกิดข้อผิดพลาดในการเปิดสิทธิ์: ' + (error?.message || ''));
+    }
+  };
+
+  // Admin: Close edit window early
+  const closeEditWindow = async () => {
+    if (!editWindow) return;
+    await supabase.from('five_s_edit_windows').update({ is_active: false }).eq('id', editWindow.id);
+    setEditWindow(null);
+  };
+
+  // Audit Log: บันทึกการแก้ไข
+  const logEdit = async (inspectionId, fieldChanged, oldValue, newValue, editType = 'score_edit') => {
+    if (String(oldValue) === String(newValue)) return; // No change
+    await supabase.from('five_s_edit_log').insert({
+      inspection_id: inspectionId,
+      edited_by: user?.id || 0,
+      field_changed: fieldChanged,
+      old_value: String(oldValue ?? ''),
+      new_value: String(newValue ?? ''),
+      edit_type: editType
+    });
+  };
 
   const fetchVotes = useCallback(async (date) => {
     if (!date) {
@@ -699,6 +779,58 @@ export default function FiveSResults() {
             </button>
           </div>
         </div>
+
+        {/* Edit Window Status Bar */}
+        {filterDate && (
+          <div style={{
+            marginTop: '0.75rem',
+            padding: '0.6rem 1rem',
+            borderRadius: '8px',
+            background: isEditWindowOpen ? '#ecfdf5' : '#f9fafb',
+            border: `1px solid ${isEditWindowOpen ? '#10b981' : '#e5e7eb'}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>{isEditWindowOpen ? '🔓' : '🔒'}</span>
+              <div>
+                <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: isEditWindowOpen ? '#059669' : '#6b7280' }}>
+                  {isEditWindowOpen ? 'เปิดให้แก้ไขคะแนนอยู่' : 'ล็อกการแก้ไขคะแนน'}
+                </div>
+                {isEditWindowOpen && editWindow && (
+                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                    หมดเวลา: {new Date(editWindow.expires_at).toLocaleString('th-TH', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                  </div>
+                )}
+              </div>
+            </div>
+            {isAdmin() && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {isEditWindowOpen ? (
+                  <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+                    onClick={() => { if (window.confirm('ต้องการปิดสิทธิ์แก้ไขก่อนเวลาใช่หรือไม่?')) closeEditWindow(); }}
+                  >
+                    🔒 ปิดสิทธิ์แก้ไข
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-primary"
+                    style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
+                    onClick={() => { if (window.confirm('เปิดสิทธิ์แก้ไขคะแนนสำหรับวันที่ ' + filterDate + '?\n(ทุกคนจะแก้ไขคะแนนได้ภายใน 24 ชม.)')) openEditWindow(); }}
+                    disabled={editWindowLoading}
+                  >
+                    🔓 เปิดสิทธิ์แก้ไข (24 ชม.)
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* สรุปคะแนนรวม */}
@@ -1690,12 +1822,14 @@ export default function FiveSResults() {
                 >
                   <h2 style={{ marginBottom: '1.25rem', fontSize: '1.2rem' }}>✏️ แก้ไขรายการตรวจ</h2>
 
+                  {/* Admin-only fields */}
                   <div className="form-group">
-                    <label className="form-label">แผนกที่ตรวจ</label>
+                    <label className="form-label">แผนกที่ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <select
                       className="form-select"
                       value={editForm.department_id || ''}
                       onChange={(e) => setEditForm({ ...editForm, department_id: e.target.value })}
+                      disabled={!isAdmin()}
                     >
                       <option value="">-- เลือกแผนก --</option>
                       {filteredDepartments.map(dept => (
@@ -1705,11 +1839,12 @@ export default function FiveSResults() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">แผนกผู้ตรวจ</label>
+                    <label className="form-label">แผนกผู้ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <select
                       className="form-select"
                       value={editForm.inspector_department_id || ''}
                       onChange={(e) => setEditForm({ ...editForm, inspector_department_id: e.target.value, inspector_name: '' })}
+                      disabled={!isAdmin()}
                     >
                       <option value="">-- เลือกแผนกผู้ตรวจ --</option>
                       {filteredDepartments.map(dept => (
@@ -1719,12 +1854,12 @@ export default function FiveSResults() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">ชื่อผู้ตรวจ</label>
+                    <label className="form-label">ชื่อผู้ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <select
                       className="form-select"
                       value={editForm.inspector_name || ''}
                       onChange={(e) => setEditForm({ ...editForm, inspector_name: e.target.value })}
-                      disabled={!editForm.inspector_department_id}
+                      disabled={!isAdmin() || !editForm.inspector_department_id}
                     >
                       <option value="">{editForm.inspector_department_id ? '-- เลือกผู้ตรวจ --' : '-- เลือกแผนกก่อน --'}</option>
                       {activeEmployees
@@ -1738,11 +1873,12 @@ export default function FiveSResults() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">วันที่ตรวจ</label>
+                    <label className="form-label">วันที่ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <input
                       type="date" className="form-input"
                       value={editForm.inspection_date || ''}
                       onChange={(e) => setEditForm({ ...editForm, inspection_date: e.target.value })}
+                      disabled={!isAdmin()}
                     />
                   </div>
 
@@ -1791,14 +1927,19 @@ export default function FiveSResults() {
                         const s1 = parseInt(editForm.score_improvement);
                         const s2 = parseInt(editForm.score_cleanliness);
                         const s3 = parseInt(editForm.score_innovation);
-                        if ([s1, s2, s3].some(s => isNaN(s) || s < 0 || s > 10)) {
+                        const s4 = parseInt(editForm.score_cooperation) || 0;
+                        const s5 = parseInt(editForm.score_helpfulness) || 0;
+                        if ([s1, s2, s3, s4, s5].some(s => isNaN(s) || s < 0 || s > 10)) {
                           alert('คะแนนต้องอยู่ระหว่าง 0-10');
                           return;
                         }
                         setSaving(true);
-                        const { error } = await supabase
-                          .from('five_s_inspections')
-                          .update({
+
+                        // Build update payload based on role
+                        const editType = isAdmin() ? 'admin_override' : 'score_edit';
+                        let updatePayload;
+                        if (isAdmin()) {
+                          updatePayload = {
                             department_id: parseInt(editForm.department_id),
                             inspector_name: editForm.inspector_name,
                             inspector_employee_id: editForm.inspector_employee_id ? parseInt(editForm.inspector_employee_id) : null,
@@ -1806,17 +1947,53 @@ export default function FiveSResults() {
                             score_improvement: s1,
                             score_cleanliness: s2,
                             score_innovation: s3,
-                            total_score: s1 + s2 + s3,
+                            score_cooperation: s4,
+                            score_helpfulness: s5,
+                            total_score: s1 + s2 + s3 + s4 + s5,
                             notes: editForm.notes || null
-                          })
+                          };
+                        } else {
+                          // User: only scores
+                          updatePayload = {
+                            score_improvement: s1,
+                            score_cleanliness: s2,
+                            score_innovation: s3,
+                            score_cooperation: s4,
+                            score_helpfulness: s5,
+                            total_score: s1 + s2 + s3 + s4 + s5
+                          };
+                        }
+
+                        const { error } = await supabase
+                          .from('five_s_inspections')
+                          .update(updatePayload)
                           .eq('id', editItem.id);
-                        setSaving(false);
+                        
                         if (!error) {
+                          // Audit Log — บันทึกทุกฟิลด์ที่เปลี่ยน
+                          const fieldMap = {
+                            score_improvement: { old: editItem.score_improvement, new: s1 },
+                            score_cleanliness: { old: editItem.score_cleanliness, new: s2 },
+                            score_innovation: { old: editItem.score_innovation, new: s3 },
+                            score_cooperation: { old: editItem.score_cooperation || 0, new: s4 },
+                            score_helpfulness: { old: editItem.score_helpfulness || 0, new: s5 },
+                          };
+                          if (isAdmin()) {
+                            fieldMap.department_id = { old: editItem.department_id, new: parseInt(editForm.department_id) };
+                            fieldMap.inspector_name = { old: editItem.inspector_name, new: editForm.inspector_name };
+                            fieldMap.inspection_date = { old: editItem.inspection_date, new: editForm.inspection_date };
+                            fieldMap.notes = { old: editItem.notes || '', new: editForm.notes || '' };
+                          }
+                          for (const [field, vals] of Object.entries(fieldMap)) {
+                            await logEdit(editItem.id, field, vals.old, vals.new, editType);
+                          }
+
                           setEditItem(null);
                           fetchInspections();
                         } else {
                           alert('เกิดข้อผิดพลาด: ' + error.message);
                         }
+                        setSaving(false);
                       }}
                     >
                       {saving ? 'กำลังบันทึก...' : '💾 บันทึกการแก้ไข'}
@@ -1893,7 +2070,7 @@ export default function FiveSResults() {
                           <th style={{ textAlign: 'center' }}>รวม</th>
                           <th>หมายเหตุ</th>
                           <th style={{ textAlign: 'center', width: '80px' }}>รูป</th>
-                          {isAdmin && <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>}
+                          {(isAdmin() || isEditWindowOpen) && <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -1937,12 +2114,12 @@ export default function FiveSResults() {
                                 <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
                               )}
                             </td>
-                            {isAdmin && (
+                            {(isAdmin() || isEditWindowOpen) && (
                               <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button
                                   className="btn btn-secondary"
                                   style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', marginRight: '0.25rem' }}
-                                  title="แก้ไข"
+                                  title={isAdmin() ? 'แก้ไข (Admin)' : 'แก้ไขคะแนน'}
                                   onClick={() => {
                                     // หาแผนกของผู้ตรวจจากชื่อ
                                     const inspectorEmp = activeEmployees.find(
@@ -1966,18 +2143,22 @@ export default function FiveSResults() {
                                 >
                                   ✏️
                                 </button>
-                                <button
-                                  className="btn btn-secondary"
-                                  style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
-                                  title="ลบ"
-                                  onClick={async () => {
-                                    if (!window.confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
-                                    await supabase.from('five_s_inspections').delete().eq('id', ins.id);
-                                    fetchInspections();
-                                  }}
-                                >
-                                  🗑️
-                                </button>
+                                {isAdmin() && (
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                                    title="ลบ"
+                                    onClick={async () => {
+                                      if (!window.confirm('ต้องการลบรายการนี้ใช่หรือไม่?')) return;
+                                      // Log deletion
+                                      await logEdit(ins.id, 'deleted', JSON.stringify({ dept: ins.departments?.name, score: ins.total_score }), 'deleted', 'delete');
+                                      await supabase.from('five_s_inspections').delete().eq('id', ins.id);
+                                      fetchInspections();
+                                    }}
+                                  >
+                                    🗑️
+                                  </button>
+                                )}
                               </td>
                             )}
                           </tr>

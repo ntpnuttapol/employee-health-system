@@ -137,7 +137,7 @@ export default function FiveSResults() {
     if (!error && data) {
       setEditWindow(data[0]);
     } else {
-      alert(getEditWindowErrorMessage('เปิดสิทธิ์แก้ไขคะแนน', error));
+      alert(getEditWindowErrorMessage('เปิดการแก้ไข', error));
     }
   };
 
@@ -150,7 +150,7 @@ export default function FiveSResults() {
       .eq('id', editWindow.id);
 
     if (error) {
-      alert(getEditWindowErrorMessage('ปิดสิทธิ์แก้ไขคะแนน', error));
+      alert(getEditWindowErrorMessage('ปิดการแก้ไข', error));
       return;
     }
 
@@ -885,7 +885,7 @@ export default function FiveSResults() {
               <span style={{ fontSize: '1.1rem' }}>{isEditWindowOpen ? '🔓' : '🔒'}</span>
               <div>
                 <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: isEditWindowOpen ? '#059669' : '#6b7280' }}>
-                  {isEditWindowOpen ? 'เปิดให้แก้ไขคะแนนอยู่' : 'ล็อกการแก้ไขคะแนน'}
+                  {isEditWindowOpen ? 'เปิดการแก้ไขอยู่' : 'ปิดการแก้ไขแล้ว'}
                 </div>
                 {isEditWindowOpen && editWindow && (
                   <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
@@ -900,9 +900,9 @@ export default function FiveSResults() {
                   <button
                     className="btn btn-secondary"
                     style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
-                    onClick={() => { if (window.confirm('ต้องการปิดสิทธิ์แก้ไขก่อนเวลาใช่หรือไม่?')) closeEditWindow(); }}
+                    onClick={() => { if (window.confirm('ต้องการปิดการแก้ไขก่อนเวลาใช่หรือไม่?')) closeEditWindow(); }}
                   >
-                    🔒 ปิดสิทธิ์แก้ไข
+                    🔒 ปิดการแก้ไข
                   </button>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -914,11 +914,11 @@ export default function FiveSResults() {
                     <button
                       className="btn btn-primary"
                       style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
-                      onClick={() => { if (window.confirm('เปิดสิทธิ์แก้ไขคะแนนสำหรับวันที่ ' + filterDate + '?\n(ทุกคนจะแก้ไขคะแนนได้ภายใน 24 ชม.)')) openEditWindow(); }}
+                      onClick={() => { if (window.confirm('เปิดการแก้ไขสำหรับวันที่ ' + filterDate + '?\n(ทุกคนจะแก้ไขคะแนนได้ภายใน 24 ชม.)')) openEditWindow(); }}
                       disabled={editWindowLoading || isPastDate}
-                      title={isPastDate ? "ไม่สามารถเปิดสิทธิ์แก้ไขคะแนนของวันในอดีตได้" : "เปิดสิทธิ์แก้ไข 24 ช.ม."}
+                      title={isPastDate ? "ไม่สามารถเปิดการแก้ไขของวันในอดีตได้" : "เปิดการแก้ไข 24 ช.ม."}
                     >
-                      🔓 เปิดสิทธิ์แก้ไข (24 ชม.)
+                      🔓 เปิดการแก้ไข (24 ชม.)
                     </button>
                   </div>
                 )}

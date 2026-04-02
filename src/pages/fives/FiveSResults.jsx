@@ -820,17 +820,21 @@ export default function FiveSResults() {
         </div>
         <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <span style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-            ({filtered.length} รายการ จาก {departmentRanking.length} แผนก)
+            {adminMode
+              ? `(${filtered.length} รายการ จาก ${departmentRanking.length} แผนก)`
+              : `(${filtered.length} รายการของคุณ จาก ${departmentRanking.length} แผนก)`}
           </span>
           <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={printReport}
-              disabled={departmentRanking.length === 0}
-              style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
-            >
-              🖨️ รีพอร์ต
-            </button>
+            {adminMode && (
+              <button
+                className="btn btn-secondary"
+                onClick={printReport}
+                disabled={departmentRanking.length === 0}
+                style={{ fontSize: '0.85rem', padding: '0.4rem 0.75rem' }}
+              >
+                🖨️ รีพอร์ต
+              </button>
+            )}
             <button
               className="btn btn-primary"
               onClick={printPhotoReport}
@@ -937,7 +941,7 @@ export default function FiveSResults() {
       )}
 
       {/* ปุ่ม Popup และ Podium */}
-      {departmentRanking.length > 0 && (
+      {adminMode && departmentRanking.length > 0 && (
         <div style={{ textAlign: 'center', marginBottom: '1rem', display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
           <button
             className="btn btn-primary btn-lg"
@@ -1018,7 +1022,7 @@ export default function FiveSResults() {
       )}
 
       {/* Podium Popup Modal — New */}
-      {showPodium && departmentRanking.length >= 3 && (
+      {adminMode && showPodium && departmentRanking.length >= 3 && (
         <div
           style={{
             position: 'fixed', inset: 0,
@@ -1230,7 +1234,7 @@ export default function FiveSResults() {
         </div>
       )}
       {/* Vote Results Popup */}
-      {showVoteResults && (
+      {adminMode && showVoteResults && (
         <div
           style={{
             position: 'fixed', inset: 0,
@@ -1404,7 +1408,7 @@ export default function FiveSResults() {
       )}
 
       {/* Vote Status Popup (Admin Only) */}
-      {showVoteStatus && (
+      {adminMode && showVoteStatus && (
         <div
           style={{
             position: 'fixed', inset: 0,
@@ -1610,7 +1614,7 @@ export default function FiveSResults() {
       )}
 
       {/* Ranking Popup Modal */}
-      {showRankingPopup && (
+      {adminMode && showRankingPopup && (
         <div
           style={{
             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
@@ -1727,28 +1731,77 @@ export default function FiveSResults() {
         </div>
       ) : (
         <>
-          {/* Ranking Table - Hidden by default, shown in popup */}
-          <div className="card" style={{ marginBottom: '1rem', display: 'none' }}>
-            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📋 ตารางอันดับทุกแผนก</h2>
+          {adminMode && (
+            <>
+              {/* Ranking Table - Hidden by default, shown in popup */}
+              <div className="card" style={{ marginBottom: '1rem', display: 'none' }}>
+                <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📋 ตารางอันดับทุกแผนก</h2>
 
-            {/* === Desktop Table (hidden on mobile) === */}
-            <div style={{ overflowX: 'auto', display: 'none' }} className="ranking-table-desktop">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '70px', textAlign: 'center' }}>อันดับ</th>
-                    <th>แผนก</th>
-                    <th style={{ textAlign: 'center' }}>เปลี่ยนแปลง<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
-                    <th style={{ textAlign: 'center' }}>สะอาด<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
-                    <th style={{ textAlign: 'center' }}>ท้าทาย<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
-                    <th style={{ textAlign: 'center' }}>คะแนนเดิม</th>
-                    <th style={{ textAlign: 'center', color: '#16a34a' }}>คะแนนโหวต</th>
-                    <th style={{ textAlign: 'center' }}>รูป</th>
-                    <th style={{ textAlign: 'center' }}>ครั้ง</th>
-                    <th style={{ width: '140px' }}>กราฟ</th>
-                  </tr>
-                </thead>
-                <tbody>
+                {/* === Desktop Table (hidden on mobile) === */}
+                <div style={{ overflowX: 'auto', display: 'none' }} className="ranking-table-desktop">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '70px', textAlign: 'center' }}>อันดับ</th>
+                        <th>แผนก</th>
+                        <th style={{ textAlign: 'center' }}>เปลี่ยนแปลง<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                        <th style={{ textAlign: 'center' }}>สะอาด<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                        <th style={{ textAlign: 'center' }}>ท้าทาย<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                        <th style={{ textAlign: 'center' }}>คะแนนเดิม</th>
+                        <th style={{ textAlign: 'center', color: '#16a34a' }}>คะแนนโหวต</th>
+                        <th style={{ textAlign: 'center' }}>รูป</th>
+                        <th style={{ textAlign: 'center' }}>ครั้ง</th>
+                        <th style={{ width: '140px' }}>กราฟ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {departmentRanking.map((dept, idx) => {
+                        const rank = idx + 1;
+                        const badge = getRankBadge(rank);
+                        const barColor = getScoreBarColor(rank);
+                        const maxScore = departmentRanking[0]?.totalScore || 1;
+                        const barWidth = (dept.totalScore / maxScore) * 100;
+                        const rowStyle = getRowStyle(rank);
+                        return (
+                          <tr key={dept.name} style={rowStyle}>
+                            <td style={{ textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: '9999px', background: badge.bg, color: badge.color, fontWeight: 'bold', fontSize: '0.85rem', minWidth: '50px' }}>
+                                {badge.icon} {rank}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: 'bold', fontSize: '1rem' }}>{dept.name}</td>
+                            <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalImprovement}</td>
+                            <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalCleanliness}</td>
+                            <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalInnovation}</td>
+                            <td style={{ textAlign: 'center' }}>
+                              <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: barColor }}>{dept.totalScore}</span>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#16a34a' }}>{dept.voteCount > 0 ? `+${dept.voteCount}` : '-'}</span>
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              {(dept.allPhotos && dept.allPhotos.length > 0) ? (
+                                <button onClick={() => setGalleryPhotos(dept.allPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6' }}>
+                                  🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{dept.allPhotos.length}</span>
+                                </button>
+                              ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>{dept.count} ครั้ง</td>
+                            <td>
+                              <div style={{ width: '100%', height: '20px', background: '#f3f4f6', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
+                                <div style={{ width: `${barWidth}%`, height: '100%', background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`, borderRadius: '10px', transition: 'width 0.6s ease' }} />
+                                <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '0.65rem', fontWeight: 'bold', color: barWidth > 50 ? '#fff' : '#374151' }}>{Math.round(barWidth)}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* === Mobile Card Layout (hidden on desktop) === */}
+                <div className="ranking-cards-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {departmentRanking.map((dept, idx) => {
                     const rank = idx + 1;
                     const badge = getRankBadge(rank);
@@ -1757,60 +1810,13 @@ export default function FiveSResults() {
                     const barWidth = (dept.totalScore / maxScore) * 100;
                     const rowStyle = getRowStyle(rank);
                     return (
-                      <tr key={dept.name} style={rowStyle}>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: '9999px', background: badge.bg, color: badge.color, fontWeight: 'bold', fontSize: '0.85rem', minWidth: '50px' }}>
-                            {badge.icon} {rank}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 'bold', fontSize: '1rem' }}>{dept.name}</td>
-                        <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalImprovement}</td>
-                        <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalCleanliness}</td>
-                        <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalInnovation}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: barColor }}>{dept.totalScore}</span>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#16a34a' }}>{dept.voteCount > 0 ? `+${dept.voteCount}` : '-'}</span>
-                        </td>
-                        <td style={{ textAlign: 'center' }}>
-                          {(dept.allPhotos && dept.allPhotos.length > 0) ? (
-                            <button onClick={() => setGalleryPhotos(dept.allPhotos)} style={{ background: 'none', border: '1px solid #e5e7eb', borderRadius: '8px', cursor: 'pointer', padding: '0.3rem 0.5rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#3b82f6' }}>
-                              🔍 <span style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{dept.allPhotos.length}</span>
-                            </button>
-                          ) : <span style={{ color: '#d1d5db' }}>—</span>}
-                        </td>
-                        <td style={{ textAlign: 'center' }}>{dept.count} ครั้ง</td>
-                        <td>
-                          <div style={{ width: '100%', height: '20px', background: '#f3f4f6', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
-                            <div style={{ width: `${barWidth}%`, height: '100%', background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`, borderRadius: '10px', transition: 'width 0.6s ease' }} />
-                            <span style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: '0.65rem', fontWeight: 'bold', color: barWidth > 50 ? '#fff' : '#374151' }}>{Math.round(barWidth)}%</span>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* === Mobile Card Layout (hidden on desktop) === */}
-            <div className="ranking-cards-mobile" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {departmentRanking.map((dept, idx) => {
-                const rank = idx + 1;
-                const badge = getRankBadge(rank);
-                const barColor = getScoreBarColor(rank);
-                const maxScore = departmentRanking[0]?.totalScore || 1;
-                const barWidth = (dept.totalScore / maxScore) * 100;
-                const rowStyle = getRowStyle(rank);
-                return (
-                  <div key={dept.name} style={{
-                    ...rowStyle,
-                    borderRadius: '12px',
-                    padding: '0.85rem 1rem',
-                    border: `1px solid ${rowStyle.background && rowStyle.background !== '#fff' ? rowStyle.background : '#e5e7eb'}`,
-                    display: 'flex', flexDirection: 'column', gap: '0.5rem'
-                  }}>
+                      <div key={dept.name} style={{
+                        ...rowStyle,
+                        borderRadius: '12px',
+                        padding: '0.85rem 1rem',
+                        border: `1px solid ${rowStyle.background && rowStyle.background !== '#fff' ? rowStyle.background : '#e5e7eb'}`,
+                        display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                      }}>
                     {/* Row 1 — Rank + Name + Score + Photo */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                       <span style={{ display: 'inline-block', padding: '0.2rem 0.5rem', borderRadius: '9999px', background: badge.bg, color: badge.color, fontWeight: 'bold', fontSize: '0.8rem', flexShrink: 0 }}>
@@ -1839,38 +1845,40 @@ export default function FiveSResults() {
                       <div style={{ width: `${barWidth}%`, height: '100%', background: `linear-gradient(90deg, ${barColor}cc, ${barColor})`, borderRadius: '5px', transition: 'width 0.6s ease' }} />
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
+                    );
+                  })}
+                </div>
+              </div>
 
 
-          {/* Score Legend */}
-          <div className="card" style={{ marginBottom: '1rem' }}>
-            <h2 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>📌 เกณฑ์การให้คะแนน</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
-              <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#dcfce7', border: '1px solid #16a34a' }}>
-                <div style={{ fontWeight: 'bold', color: '#16a34a' }}>🟢 อันดับ 1-3</div>
-                <div style={{ fontSize: '0.85rem', color: '#374151' }}>ผลงานดีเด่น — รักษามาตรฐาน</div>
+              {/* Score Legend */}
+              <div className="card" style={{ marginBottom: '1rem' }}>
+                <h2 style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>📌 เกณฑ์การให้คะแนน</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                  <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#dcfce7', border: '1px solid #16a34a' }}>
+                    <div style={{ fontWeight: 'bold', color: '#16a34a' }}>🟢 อันดับ 1-3</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151' }}>ผลงานดีเด่น — รักษามาตรฐาน</div>
+                  </div>
+                  <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f3f4f6', border: '1px solid #9ca3af' }}>
+                    <div style={{ fontWeight: 'bold', color: '#6b7280' }}>⚪ อันดับกลาง</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151' }}>ผลงานพอใช้ — ควรพัฒนาเพิ่ม</div>
+                  </div>
+                  <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#fee2e2', border: '1px solid #dc2626' }}>
+                    <div style={{ fontWeight: 'bold', color: '#dc2626' }}>🔴 2 อันดับสุดท้าย</div>
+                    <div style={{ fontSize: '0.85rem', color: '#374151' }}>ต้องปรับปรุงเร่งด่วน</div>
+                  </div>
+                </div>
+                <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                  <strong>หัวข้อการตรวจ (แต่ละหัวข้อ 10 คะแนน รวม 30 คะแนน):</strong>
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                    <span>1. การเปลี่ยนแปลงที่ดีขึ้น</span>
+                    <span>2. ความสะอาด</span>
+                    <span>3. ความท้าทายแปลกใหม่</span>
+                  </div>
+                </div>
               </div>
-              <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#f3f4f6', border: '1px solid #9ca3af' }}>
-                <div style={{ fontWeight: 'bold', color: '#6b7280' }}>⚪ อันดับกลาง</div>
-                <div style={{ fontSize: '0.85rem', color: '#374151' }}>ผลงานพอใช้ — ควรพัฒนาเพิ่ม</div>
-              </div>
-              <div style={{ padding: '0.75rem', borderRadius: '8px', background: '#fee2e2', border: '1px solid #dc2626' }}>
-                <div style={{ fontWeight: 'bold', color: '#dc2626' }}>🔴 2 อันดับสุดท้าย</div>
-                <div style={{ fontSize: '0.85rem', color: '#374151' }}>ต้องปรับปรุงเร่งด่วน</div>
-              </div>
-            </div>
-            <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
-              <strong>หัวข้อการตรวจ (แต่ละหัวข้อ 10 คะแนน รวม 30 คะแนน):</strong>
-              <div style={{ marginTop: '0.5rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                <span>1. การเปลี่ยนแปลงที่ดีขึ้น</span>
-                <span>2. ความสะอาด</span>
-                <span>3. ความท้าทายแปลกใหม่</span>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
 
           {/* Edit Modal */}
           {editItem && (

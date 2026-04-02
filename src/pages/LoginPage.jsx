@@ -1,19 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
 
 // Hub SSO Configuration
 const HUB_URL = import.meta.env.VITE_HUB_URL || 'https://polyfoampfs-hub.vercel.app';
 const HUB_VALIDATE_URL = `${HUB_URL}/api/sso/validate`;
 const SYSTEM_ID = 'hr-employee';
 
-export default function LoginPage() {
+export default function LoginPage({ forceDevPreview = false }) {
+  const isLocalDev = import.meta.env.DEV && window.location.hostname === 'localhost';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessingSSO, setIsProcessingSSO] = useState(false);
-  const { login, loginWithSSO, user } = useAuth();
+  const [devUsers, setDevUsers] = useState([]);
+  const [devUserId, setDevUserId] = useState('');
+  const [isLoadingDevUsers, setIsLoadingDevUsers] = useState(false);
+  const [isDevLoginLoading, setIsDevLoginLoading] = useState(false);
+  const { login, loginWithSSO, loginAsDevUser, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const hasSSOToken = Boolean(searchParams.get('sso_token'));
@@ -75,10 +81,35 @@ export default function LoginPage() {
 
   // Auto-redirect when user becomes authenticated
   useEffect(() => {
-    if (user) {
+    if (user && !forceDevPreview) {
       navigate('/dashboard', { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, forceDevPreview]);
+
+  useEffect(() => {
+    if (!isLocalDev) return;
+
+    const fetchDevUsers = async () => {
+      setIsLoadingDevUsers(true);
+
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, username, full_name, role, employees(first_name, last_name, departments(name))')
+        .eq('is_active', true)
+        .order('full_name', { ascending: true });
+
+      if (!error && data) {
+        setDevUsers(data);
+        if (data.length > 0) {
+          setDevUserId(String(data[0].id));
+        }
+      }
+
+      setIsLoadingDevUsers(false);
+    };
+
+    fetchDevUsers();
+  }, [isLocalDev]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -94,6 +125,23 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const handleDevLogin = async () => {
+    if (!devUserId) return;
+
+    setError('');
+    setIsDevLoginLoading(true);
+
+    try {
+      await loginAsDevUser(devUserId);
+    } catch (err) {
+      console.error('Dev login error:', err);
+      setError(err.message || 'เข้าสู่ระบบโหมดทดสอบไม่สำเร็จ');
+      setIsDevLoginLoading(false);
+    }
+  };
+
+  const showDevPreview = isLocalDev && !hasSSOToken;
 
   // Show loading state while processing SSO
   if (isProcessingSSO) {
@@ -191,6 +239,66 @@ export default function LoginPage() {
             {error && (
               <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>
                 ⚠️ {error}
+              </div>
+            )}
+
+            {showDevPreview && (
+              <div
+                style={{
+                  marginBottom: '1.25rem',
+                  padding: '1rem',
+                  borderRadius: '16px',
+                  border: '1px dashed #93c5fd',
+                  background: '#eff6ff',
+                  boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.4)'
+                }}
+              >
+                <div style={{ fontWeight: 'bold', marginBottom: '0.35rem', color: '#1d4ed8' }}>
+                  Dev Preview บน localhost
+                </div>
+                <div style={{ fontSize: '0.9rem', color: '#475569', marginBottom: '0.85rem' }}>
+                  {forceDevPreview
+                    ? 'เลือก user เพื่อสลับดูหน้าจอทดสอบได้แม้จะมี session ค้างอยู่'
+                    : 'เลือก user เพื่อดูภาพรวมหน้าจอก่อน commit โดยไม่ต้องผ่าน SSO'}
+                </div>
+                {forceDevPreview && user && (
+                  <div style={{ fontSize: '0.85rem', color: '#1e40af', marginBottom: '0.75rem' }}>
+                    กำลังถือ session ของ <strong>{user.full_name || user.username}</strong> อยู่ แต่สามารถเลือกสลับเป็น user อื่นได้จากด้านล่าง
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <select
+                    className="form-select"
+                    value={devUserId}
+                    onChange={(e) => setDevUserId(e.target.value)}
+                    disabled={isLoadingDevUsers || isDevLoginLoading || devUsers.length === 0}
+                    style={{ flex: '1', minWidth: '220px', background: '#ffffff' }}
+                  >
+                    {devUsers.length === 0 ? (
+                      <option value="">{isLoadingDevUsers ? 'กำลังโหลดผู้ใช้...' : 'ไม่พบผู้ใช้งานสำหรับทดสอบ'}</option>
+                    ) : (
+                      devUsers.map((devUser) => {
+                        const displayName = devUser.full_name
+                          || (devUser.employees ? `${devUser.employees.first_name} ${devUser.employees.last_name}` : '')
+                          || devUser.username;
+                        const departmentName = devUser.employees?.departments?.name || 'ไม่ระบุแผนก';
+                        return (
+                          <option key={devUser.id} value={devUser.id}>
+                            {displayName} ({devUser.role} • {departmentName})
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleDevLogin}
+                    disabled={!devUserId || isLoadingDevUsers || isDevLoginLoading}
+                  >
+                    {isDevLoginLoading ? 'กำลังเข้าโหมดทดสอบ...' : 'เข้าสู่ระบบโหมดทดสอบ'}
+                  </button>
+                </div>
               </div>
             )}
 

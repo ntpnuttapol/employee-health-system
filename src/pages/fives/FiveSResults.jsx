@@ -50,6 +50,18 @@ export default function FiveSResults() {
     ? `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
     : (user?.full_name || user?.username || '').trim();
   const hasInspectorIdentity = Boolean(currentInspectorEmployeeId || currentInspectorName);
+  const auditActorId = (() => {
+    const numericId = Number(user?.employee_id ?? user?.employees?.id ?? 0);
+    return Number.isFinite(numericId) ? numericId : 0;
+  })();
+
+  const getEditWindowErrorMessage = (actionLabel, error) => {
+    const rawMessage = error?.message || '';
+    if (rawMessage.includes('row-level security policy')) {
+      return `${actionLabel}ไม่ได้ เพราะ policy ของตาราง five_s_edit_windows/five_s_edit_log ใน Supabase ยังไม่เปิดให้ client role ปัจจุบันใช้งาน กรุณารันไฟล์ database/fix_five_s_edit_windows_rls.sql ใน SQL Editor ก่อน`;
+    }
+    return `${actionLabel}ไม่สำเร็จ: ${rawMessage || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'}`;
+  };
 
   const isOwnInspection = useCallback((inspection) => {
     if (!inspection) return false;
@@ -116,7 +128,7 @@ export default function FiveSResults() {
       .from('five_s_edit_windows')
       .insert({
         inspection_date: filterDate,
-        opened_by: user.id,
+        opened_by: auditActorId,
         opened_at: now.toISOString(),
         expires_at: expires.toISOString(),
         is_active: true
@@ -125,14 +137,23 @@ export default function FiveSResults() {
     if (!error && data) {
       setEditWindow(data[0]);
     } else {
-      alert('เกิดข้อผิดพลาดในการเปิดสิทธิ์: ' + (error?.message || ''));
+      alert(getEditWindowErrorMessage('เปิดสิทธิ์แก้ไขคะแนน', error));
     }
   };
 
   // Admin: Close edit window early
   const closeEditWindow = async () => {
     if (!editWindow) return;
-    await supabase.from('five_s_edit_windows').update({ is_active: false }).eq('id', editWindow.id);
+    const { error } = await supabase
+      .from('five_s_edit_windows')
+      .update({ is_active: false })
+      .eq('id', editWindow.id);
+
+    if (error) {
+      alert(getEditWindowErrorMessage('ปิดสิทธิ์แก้ไขคะแนน', error));
+      return;
+    }
+
     setEditWindow(null);
   };
 
@@ -141,7 +162,7 @@ export default function FiveSResults() {
     if (String(oldValue) === String(newValue)) return; // No change
     await supabase.from('five_s_edit_log').insert({
       inspection_id: inspectionId,
-      edited_by: user?.id || 0,
+      edited_by: auditActorId,
       field_changed: fieldChanged,
       old_value: String(oldValue ?? ''),
       new_value: String(newValue ?? ''),
@@ -911,8 +932,8 @@ export default function FiveSResults() {
       {filtered.length > 0 && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: '0.75rem',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(105px, 1fr))',
+          gap: '0.5rem',
           marginBottom: '1rem'
         }}>
           {[
@@ -926,15 +947,19 @@ export default function FiveSResults() {
           ].map((item, idx) => (
             <div key={idx} className="card" style={{
               textAlign: 'center',
-              padding: '1rem',
+              padding: '0.75rem 0.65rem',
               background: item.bg,
-              border: `1px solid ${item.color}22`
+              border: `1px solid ${item.color}22`,
+              minHeight: '108px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center'
             }}>
-              <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.25rem' }}>{item.label}</div>
-              <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: item.color, lineHeight: 1.2 }}>
+              <div style={{ fontSize: '0.72rem', color: '#6b7280', marginBottom: '0.2rem', lineHeight: 1.3 }}>{item.label}</div>
+              <div style={{ fontSize: '1.55rem', fontWeight: 'bold', color: item.color, lineHeight: 1.15 }}>
                 {item.value}
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{item.unit}</div>
+              <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: '0.1rem' }}>{item.unit}</div>
             </div>
           ))}
         </div>

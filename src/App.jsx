@@ -5,6 +5,7 @@ import { useAuth } from './contexts/AuthContext';
 // Pages
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
+import DevLoginPage from './pages/DevLoginPage';
 import BranchManagement from './pages/admin/BranchManagement';
 import DepartmentManagement from './pages/admin/DepartmentManagement';
 import PositionManagement from './pages/admin/PositionManagement';
@@ -46,6 +47,19 @@ function ProtectedRoute({ children, adminOnly = false }) {
   }
 
   return children;
+}
+
+function DevLoginRoute() {
+  const isLocalDev =
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    window.location.hostname === 'localhost';
+
+  if (!isLocalDev) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <DevLoginPage />;
 }
 
 // Layout with Mobile Menu Toggle
@@ -128,6 +142,8 @@ export default function App() {
       <Route path="/login" element={
         user ? <Navigate to="/dashboard" replace /> : <LoginPage />
       } />
+
+      <Route path="/dev-login" element={<DevLoginRoute />} />
 
       <Route path="/" element={
         <Navigate to={user ? "/dashboard" : "/login"} replace />

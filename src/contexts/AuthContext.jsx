@@ -10,6 +10,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const persistSession = (userData) => {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
+    setUser(userData);
+  };
+
   useEffect(() => {
     // Check for existing session in localStorage
     const checkSession = () => {
@@ -55,9 +60,7 @@ export function AuthProvider({ children }) {
 
       console.log('Login successful:', data.username);
 
-      // Save to localStorage
-      localStorage.setItem(SESSION_KEY, JSON.stringify(data));
-      setUser(data);
+      persistSession(data);
 
       return data;
     } catch (err) {
@@ -82,9 +85,8 @@ export function AuthProvider({ children }) {
       // ถ้าเจอ user ให้ login
       if (existingUser) {
         console.log('SSO login successful:', existingUser.username);
-        
-        localStorage.setItem(SESSION_KEY, JSON.stringify(existingUser));
-        setUser(existingUser);
+
+        persistSession(existingUser);
         return existingUser;
       }
 
@@ -95,6 +97,32 @@ export function AuthProvider({ children }) {
       console.error('SSO login error:', err);
       throw err;
     }
+  };
+
+  const loginAsDevUser = async (userId) => {
+    const isLocalDev =
+      import.meta.env.DEV &&
+      typeof window !== 'undefined' &&
+      window.location.hostname === 'localhost';
+
+    if (!isLocalDev) {
+      throw new Error('Dev preview login ใช้งานได้เฉพาะ localhost เท่านั้น');
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, username, full_name, email, role, employee_id, is_active, hub_user_id, employees(id, first_name, last_name, department_id, departments(id, name))')
+      .eq('id', userId)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !data) {
+      throw new Error('ไม่พบผู้ใช้งานสำหรับโหมดทดสอบ');
+    }
+
+    console.log('Dev preview login:', data.username);
+    persistSession(data);
+    return data;
   };
 
   const logout = () => {
@@ -118,6 +146,7 @@ export function AuthProvider({ children }) {
       user,
       login,
       loginWithSSO,
+      loginAsDevUser,
       logout,
       isAdmin,
       isAuthenticated,

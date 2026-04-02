@@ -36,30 +36,44 @@ CREATE INDEX idx_five_s_edit_log_edited_by ON five_s_edit_log(edited_by);
 -- ========================================
 -- RLS Policies (Row Level Security)
 -- ========================================
+-- โปรเจคนี้ใช้ custom login ของแอป ไม่ได้ใช้ Supabase Auth session
+-- ดังนั้น client จะวิ่งด้วย role `anon` เป็นหลัก แม้ user จะล็อกอินในระบบแล้ว
+-- ถ้าจะให้ฟีเจอร์เปิด/ปิดสิทธิ์แก้ไขคะแนนใช้งานได้จากหน้าเว็บ ต้องเปิด policy ให้ `public`
 
 -- Edit Windows: ทุกคนอ่านได้ แต่ Admin เท่านั้นที่สร้าง/แก้ได้
 ALTER TABLE five_s_edit_windows ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read edit windows" ON five_s_edit_windows;
+DROP POLICY IF EXISTS "Admins can manage edit windows" ON five_s_edit_windows;
+
 CREATE POLICY "Anyone can read edit windows"
 ON five_s_edit_windows FOR SELECT
-TO authenticated
+TO public
 USING (true);
 
-CREATE POLICY "Admins can manage edit windows"
-ON five_s_edit_windows FOR ALL
-TO authenticated
+CREATE POLICY "Client can insert edit windows"
+ON five_s_edit_windows FOR INSERT
+TO public
+WITH CHECK (true);
+
+CREATE POLICY "Client can update edit windows"
+ON five_s_edit_windows FOR UPDATE
+TO public
 USING (true)
 WITH CHECK (true);
 
 -- Edit Log: ทุกคนอ่านได้ แต่ระบบเท่านั้นที่ insert ได้
 ALTER TABLE five_s_edit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can read edit logs" ON five_s_edit_log;
+DROP POLICY IF EXISTS "Anyone can insert edit logs" ON five_s_edit_log;
+
 CREATE POLICY "Anyone can read edit logs"
 ON five_s_edit_log FOR SELECT
-TO authenticated
+TO public
 USING (true);
 
 CREATE POLICY "Anyone can insert edit logs"
 ON five_s_edit_log FOR INSERT
-TO authenticated
+TO public
 WITH CHECK (true);

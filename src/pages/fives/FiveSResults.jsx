@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 export default function FiveSResults() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
   const { isAdmin, user } = useAuth();
+  const adminMode = isAdmin();
 
   // ล็อกเฉพาะสาขาสุวรรณภูมิ
   const suvarnabhumiBranch = (branches || []).find(b => b.name.includes('สุวรรณภูมิ'));
@@ -44,6 +45,29 @@ export default function FiveSResults() {
 
   // ตรวจสอบว่าเป็นวันย้อนหลังหรือไม่
   const isPastDate = filterDate && filterDate < todayStr;
+  const currentInspectorEmployeeId = user?.employees?.id ? String(user.employees.id) : '';
+  const currentInspectorName = user?.employees
+    ? `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
+    : (user?.full_name || user?.username || '').trim();
+  const hasInspectorIdentity = Boolean(currentInspectorEmployeeId || currentInspectorName);
+
+  const isOwnInspection = useCallback((inspection) => {
+    if (!inspection) return false;
+
+    if (
+      currentInspectorEmployeeId &&
+      inspection.inspector_employee_id &&
+      String(inspection.inspector_employee_id) === currentInspectorEmployeeId
+    ) {
+      return true;
+    }
+
+    if (currentInspectorName && inspection.inspector_name === currentInspectorName) {
+      return true;
+    }
+
+    return false;
+  }, [currentInspectorEmployeeId, currentInspectorName]);
 
   // Edit Window State
   const [editWindow, setEditWindow] = useState(null); // current active edit window for filterDate
@@ -126,7 +150,7 @@ export default function FiveSResults() {
   };
 
   const fetchVotes = useCallback(async (date) => {
-    if (!date) {
+    if (!date || !adminMode) {
       setVotes([]);
       return;
     }
@@ -137,7 +161,7 @@ export default function FiveSResults() {
     if (!error) {
       setVotes(data || []);
     }
-  }, []);
+  }, [adminMode]);
 
   // ดึงข้อมูลรายละเอียดผู้โหวต (สำหรับ Admin)
   const fetchVoteDetails = useCallback(async (date) => {
@@ -563,6 +587,13 @@ export default function FiveSResults() {
 
   const fetchInspections = async () => {
     setLoading(true);
+
+    if (!adminMode && !hasInspectorIdentity) {
+      setInspections([]);
+      setLoading(false);
+      return;
+    }
+
     let query = supabase
       .from('five_s_inspections')
       .select('*, departments(name), photo_urls, inspector_employee_id')
@@ -596,8 +627,8 @@ export default function FiveSResults() {
         ...ins,
         photos: photosMap[ins.id] || []
       }));
-      
-      setInspections(enriched);
+
+      setInspections(adminMode ? enriched : enriched.filter(isOwnInspection));
     }
     setLoading(false);
   };
@@ -628,7 +659,7 @@ export default function FiveSResults() {
 
   useEffect(() => {
     fetchInspections();
-  }, []);
+  }, [adminMode, hasInspectorIdentity, isOwnInspection]);
 
   // Filter by EXACT DATE
   const filtered = filterDate
@@ -733,11 +764,39 @@ export default function FiveSResults() {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%' }}>
       <div className="page-header">
-        <h1 className="page-title">📊 ผลคะแนน 5ส &amp; อันดับแผนก</h1>
+        <h1 className="page-title">
+          {adminMode ? '📊 ผลคะแนน 5ส & อันดับแผนก' : '📊 คะแนน 5ส ที่คุณตรวจ'}
+        </h1>
         <p className="page-subtitle">
-          สรุปคะแนนเฉลี่ยรายแผนก — อันดับ 1-3 <span style={{ color: '#16a34a', fontWeight: 'bold' }}>สีเขียว</span> / สองอันดับสุดท้าย <span style={{ color: '#dc2626', fontWeight: 'bold' }}>สีแดง</span>
+          {adminMode ? (
+            <>
+              สรุปคะแนนเฉลี่ยรายแผนก — อันดับ 1-3 <span style={{ color: '#16a34a', fontWeight: 'bold' }}>สีเขียว</span> / สองอันดับสุดท้าย <span style={{ color: '#dc2626', fontWeight: 'bold' }}>สีแดง</span>
+            </>
+          ) : (
+            <>ดูคะแนน 5ส ที่คุณบันทึกไว้ในแต่ละแผนกและแต่ละวันที่ตรวจได้จากหน้านี้</>
+          )}
         </p>
       </div>
+
+      {!adminMode && (
+        <div
+          className="card"
+          style={{
+            marginBottom: '1rem',
+            background: hasInspectorIdentity ? '#eff6ff' : '#fef2f2',
+            border: `1px solid ${hasInspectorIdentity ? '#bfdbfe' : '#fecaca'}`
+          }}
+        >
+          <div style={{ fontWeight: 'bold', color: hasInspectorIdentity ? '#1d4ed8' : '#dc2626', marginBottom: '0.35rem' }}>
+            {hasInspectorIdentity ? 'แสดงเฉพาะคะแนนที่คุณเป็นผู้ตรวจ' : 'ไม่พบข้อมูลผู้ตรวจของบัญชีนี้'}
+          </div>
+          <div style={{ fontSize: '0.9rem', color: '#475569' }}>
+            {hasInspectorIdentity
+              ? 'ระบบจะซ่อนคะแนนของผู้ใช้งานคนอื่น และให้คุณดูเฉพาะรายการที่ตัวเองกรอกตรวจ 5ส เท่านั้น'
+              : 'กรุณาติดต่อผู้ดูแลระบบเพื่อเชื่อมบัญชีผู้ใช้งานกับข้อมูลพนักงานก่อนใช้งานหน้าผลคะแนน 5ส'}
+          </div>
+        </div>
+      )}
 
       {/* Filter */}
       <div className="card" style={{ marginBottom: '1rem' }}>
@@ -810,7 +869,7 @@ export default function FiveSResults() {
                 )}
               </div>
             </div>
-            {isAdmin() && (
+            {adminMode && (
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {isEditWindowOpen ? (
                   <button
@@ -895,7 +954,7 @@ export default function FiveSResults() {
           >
             📊 ดูอันดับคะแนนทั้งหมด
           </button>
-          {votes.length > 0 && (
+          {adminMode && votes.length > 0 && (
             <button
               className="btn btn-primary btn-lg"
               onClick={() => setShowVoteResults(true)}
@@ -914,7 +973,7 @@ export default function FiveSResults() {
               🗳️ ผลการโหวต
             </button>
           )}
-          {isAdmin() && votes.length > 0 && (
+          {adminMode && votes.length > 0 && (
             <button
               className="btn btn-primary btn-lg"
               onClick={() => {
@@ -1835,12 +1894,12 @@ export default function FiveSResults() {
 
                   {/* Admin-only fields */}
                   <div className="form-group">
-                    <label className="form-label">แผนกที่ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
+                    <label className="form-label">แผนกที่ตรวจ {!adminMode && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <select
                       className="form-select"
                       value={editForm.department_id || ''}
                       onChange={(e) => setEditForm({ ...editForm, department_id: e.target.value })}
-                      disabled={!isAdmin()}
+                      disabled={!adminMode}
                     >
                       <option value="">-- เลือกแผนก --</option>
                       {filteredDepartments.map(dept => (
@@ -1850,12 +1909,12 @@ export default function FiveSResults() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">แผนกผู้ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
+                    <label className="form-label">แผนกผู้ตรวจ {!adminMode && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <select
                       className="form-select"
                       value={editForm.inspector_department_id || ''}
                       onChange={(e) => setEditForm({ ...editForm, inspector_department_id: e.target.value, inspector_name: '' })}
-                      disabled={!isAdmin()}
+                      disabled={!adminMode}
                     >
                       <option value="">-- เลือกแผนกผู้ตรวจ --</option>
                       {filteredDepartments.map(dept => (
@@ -1865,12 +1924,12 @@ export default function FiveSResults() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">ชื่อผู้ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
+                    <label className="form-label">ชื่อผู้ตรวจ {!adminMode && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <select
                       className="form-select"
                       value={editForm.inspector_name || ''}
                       onChange={(e) => setEditForm({ ...editForm, inspector_name: e.target.value })}
-                      disabled={!isAdmin() || !editForm.inspector_department_id}
+                      disabled={!adminMode || !editForm.inspector_department_id}
                     >
                       <option value="">{editForm.inspector_department_id ? '-- เลือกผู้ตรวจ --' : '-- เลือกแผนกก่อน --'}</option>
                       {activeEmployees
@@ -1884,12 +1943,12 @@ export default function FiveSResults() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">วันที่ตรวจ {!isAdmin() && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
+                    <label className="form-label">วันที่ตรวจ {!adminMode && <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>(Admin เท่านั้น)</span>}</label>
                     <input
                       type="date" className="form-input"
                       value={editForm.inspection_date || ''}
                       onChange={(e) => setEditForm({ ...editForm, inspection_date: e.target.value })}
-                      disabled={!isAdmin()}
+                      disabled={!adminMode}
                     />
                   </div>
 
@@ -1947,9 +2006,15 @@ export default function FiveSResults() {
                         setSaving(true);
 
                         // Build update payload based on role
-                        const editType = isAdmin() ? 'admin_override' : 'score_edit';
+                        if (!adminMode && !isOwnInspection(editItem)) {
+                          alert('คุณแก้ไขได้เฉพาะรายการที่ตัวเองเป็นผู้ตรวจเท่านั้น');
+                          setSaving(false);
+                          return;
+                        }
+
+                        const editType = adminMode ? 'admin_override' : 'score_edit';
                         let updatePayload;
-                        if (isAdmin()) {
+                        if (adminMode) {
                           updatePayload = {
                             department_id: parseInt(editForm.department_id),
                             inspector_name: editForm.inspector_name,
@@ -1989,7 +2054,7 @@ export default function FiveSResults() {
                             score_cooperation: { old: editItem.score_cooperation || 0, new: s4 },
                             score_helpfulness: { old: editItem.score_helpfulness || 0, new: s5 },
                           };
-                          if (isAdmin()) {
+                          if (adminMode) {
                             fieldMap.department_id = { old: editItem.department_id, new: parseInt(editForm.department_id) };
                             fieldMap.inspector_name = { old: editItem.inspector_name, new: editForm.inspector_name };
                             fieldMap.inspection_date = { old: editItem.inspection_date, new: editForm.inspection_date };
@@ -2081,7 +2146,7 @@ export default function FiveSResults() {
                           <th style={{ textAlign: 'center' }}>รวม</th>
                           <th>หมายเหตุ</th>
                           <th style={{ textAlign: 'center', width: '80px' }}>รูป</th>
-                          {(isAdmin() || isEditWindowOpen) && <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>}
+                          {(adminMode || isEditWindowOpen) && <th style={{ width: '90px', textAlign: 'center' }}>จัดการ</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -2125,13 +2190,14 @@ export default function FiveSResults() {
                                 <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
                               )}
                             </td>
-                            {(isAdmin() || isEditWindowOpen) && (
+                            {(adminMode || isEditWindowOpen) && (
                               <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                 <button
                                   className="btn btn-secondary"
                                   style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', marginRight: '0.25rem' }}
-                                  title={isAdmin() ? 'แก้ไข (Admin)' : 'แก้ไขคะแนน'}
+                                  title={adminMode ? 'แก้ไข (Admin)' : 'แก้ไขคะแนน'}
                                   onClick={() => {
+                                    if (!adminMode && !isOwnInspection(ins)) return;
                                     // หาแผนกของผู้ตรวจจากชื่อ
                                     const inspectorEmp = activeEmployees.find(
                                       e => `${e.first_name} ${e.last_name}` === ins.inspector_name
@@ -2154,7 +2220,7 @@ export default function FiveSResults() {
                                 >
                                   ✏️
                                 </button>
-                                {isAdmin() && (
+                                {adminMode && (
                                   <button
                                     className="btn btn-secondary"
                                     style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}

@@ -109,9 +109,7 @@ function AppLayout() {
             {/* 5S Inspection Routes */}
             <Route path="/five-s" element={<FiveSInspection />} />
             <Route path="/five-s-vote" element={<FiveSVoting />} />
-            <Route path="/five-s-results" element={
-              <ProtectedRoute adminOnly><FiveSResults /></ProtectedRoute>
-            } />
+            <Route path="/five-s-results" element={<FiveSResults />} />
 
             {/* Profile Route */}
             <Route path="/profile" element={<ProfilePage />} />

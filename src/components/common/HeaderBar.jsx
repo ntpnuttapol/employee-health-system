@@ -9,7 +9,7 @@ export default function HeaderBar({ onMenuToggle, isMenuOpen }) {
   const location = useLocation();
   const { activities = [] } = useActivity() || {};
   const { employees = [] } = useMasterData() || {};
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
@@ -99,7 +99,12 @@ export default function HeaderBar({ onMenuToggle, isMenuOpen }) {
     '/health-records': { title: 'ประวัติสุขภาพ', subtitle: 'เรียกดูข้อมูลย้อนหลังและค้นหารายการสำคัญได้สะดวก' },
     '/five-s': { title: 'ตรวจประเมิน 5ส', subtitle: 'บันทึกผลตรวจ 5ส พร้อมติดตามคะแนนแต่ละพื้นที่' },
     '/five-s-vote': { title: 'โหวตคะแนน 5ส', subtitle: 'ให้คะแนนพื้นที่เด่นและกระตุ้นการมีส่วนร่วมของทีม' },
-    '/five-s-results': { title: 'ผลคะแนน 5ส', subtitle: 'สรุปคะแนน อันดับ และภาพรวมผลการประเมินล่าสุด' },
+    '/five-s-results': {
+      title: 'ผลคะแนน 5ส',
+      subtitle: isAdmin()
+        ? 'สรุปคะแนน อันดับ และภาพรวมผลการประเมินล่าสุด'
+        : 'ดูคะแนน 5ส ที่คุณบันทึกไว้ แยกตามแผนกและวันที่ตรวจ'
+    },
     '/profile': { title: 'โปรไฟล์ผู้ใช้งาน', subtitle: 'จัดการข้อมูลส่วนตัวและตรวจสอบสถานะบัญชีของคุณ' }
   };
 

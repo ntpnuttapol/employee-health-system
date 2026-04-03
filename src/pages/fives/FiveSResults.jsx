@@ -8,6 +8,13 @@ export default function FiveSResults() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
   const { isAdmin, user } = useAuth();
   const adminMode = isAdmin();
+  const scoreFields = [
+    { key: 'score_improvement', label: '1. การเปลี่ยนแปลงที่ดีขึ้น' },
+    { key: 'score_cleanliness', label: '2. ความสะอาด' },
+    { key: 'score_innovation', label: '3. ความท้าทายแปลกใหม่' },
+    { key: 'score_cooperation', label: '4. ความร่วมมือ' },
+    { key: 'score_helpfulness', label: '5. ความช่วยเหลือ' },
+  ];
 
   // ล็อกเฉพาะสาขาสุวรรณภูมิ
   const suvarnabhumiBranch = (branches || []).find(b => b.name.includes('สุวรรณภูมิ'));
@@ -1894,11 +1901,11 @@ export default function FiveSResults() {
                   </div>
                 </div>
                 <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: '#6b7280' }}>
-                  <strong>หัวข้อการตรวจ (แต่ละหัวข้อ 10 คะแนน รวม 30 คะแนน):</strong>
+                  <strong>หัวข้อการตรวจ (แต่ละหัวข้อ 10 คะแนน รวม 50 คะแนน):</strong>
                   <div style={{ marginTop: '0.5rem', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                    <span>1. การเปลี่ยนแปลงที่ดีขึ้น</span>
-                    <span>2. ความสะอาด</span>
-                    <span>3. ความท้าทายแปลกใหม่</span>
+                    {scoreFields.map((field) => (
+                      <span key={field.key}>{field.label}</span>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -1985,32 +1992,19 @@ export default function FiveSResults() {
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">1. การเปลี่ยนแปลงที่ดีขึ้น (0-10)</label>
-                    <input
-                      type="number" className="form-input" min="0" max="10"
-                      value={editForm.score_improvement ?? ''}
-                      onChange={(e) => setEditForm({ ...editForm, score_improvement: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">2. ความสะอาด (0-10)</label>
-                    <input
-                      type="number" className="form-input" min="0" max="10"
-                      value={editForm.score_cleanliness ?? ''}
-                      onChange={(e) => setEditForm({ ...editForm, score_cleanliness: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">3. ความท้าทายแปลกใหม่ (0-10)</label>
-                    <input
-                      type="number" className="form-input" min="0" max="10"
-                      value={editForm.score_innovation ?? ''}
-                      onChange={(e) => setEditForm({ ...editForm, score_innovation: e.target.value })}
-                    />
-                  </div>
+                  {scoreFields.map((field) => (
+                    <div className="form-group" key={field.key}>
+                      <label className="form-label">{field.label} (0-10)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min="0"
+                        max="10"
+                        value={editForm[field.key] ?? ''}
+                        onChange={(e) => setEditForm({ ...editForm, [field.key]: e.target.value })}
+                      />
+                    </div>
+                  ))}
 
                   <div className="form-group">
                     <label className="form-label">หมายเหตุ</label>

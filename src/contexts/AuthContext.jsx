@@ -5,36 +5,102 @@ const AuthContext = createContext(null);
 
 // Session storage key
 const SESSION_KEY = 'health_system_user';
+const USER_SESSION_SELECT = 'id, username, full_name, email, role, employee_id, is_active, hub_user_id, employees(id, first_name, last_name, department_id, departments(id, name))';
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const clearSession = () => {
+    localStorage.removeItem(SESSION_KEY);
+    setUser(null);
+  };
 
   const persistSession = (userData) => {
     localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
     setUser(userData);
   };
 
+  const validateSessionUser = async (sessionUser) => {
+    if (!sessionUser?.id) {
+      clearSession();
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .select(USER_SESSION_SELECT)
+      .eq('id', sessionUser.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error || !data) {
+      console.warn('Session user no longer available, forcing login again:', error?.message || sessionUser.id);
+      clearSession();
+      return null;
+    }
+
+    persistSession(data);
+    return data;
+  };
+
   useEffect(() => {
     // Check for existing session in localStorage
-    const checkSession = () => {
+    let cancelled = false;
+
+    const checkSession = async () => {
       try {
         const savedSession = localStorage.getItem(SESSION_KEY);
         if (savedSession) {
           const userData = JSON.parse(savedSession);
-          setUser(userData);
-          console.log('Session restored for:', userData.username);
+          const validatedUser = await validateSessionUser(userData);
+          if (!cancelled && validatedUser) {
+            console.log('Session restored for:', validatedUser.username);
+          }
         }
       } catch (err) {
         console.error('Error restoring session:', err);
-        localStorage.removeItem(SESSION_KEY);
+        clearSession();
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
 
     checkSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id) return undefined;
+
+    const revalidateActiveSession = async () => {
+      try {
+        await validateSessionUser(user);
+      } catch (err) {
+        console.error('Session revalidation failed:', err);
+        clearSession();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        revalidateActiveSession();
+      }
+    };
+
+    window.addEventListener('focus', revalidateActiveSession);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', revalidateActiveSession);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user?.id]);
 
   const login = async (username, password) => {
     console.log('Login attempt:', username);
@@ -43,7 +109,7 @@ export function AuthProvider({ children }) {
       // Query users table, joining employees and departments
       const { data, error } = await supabase
         .from('users')
-        .select('id, username, full_name, email, role, employee_id, is_active, employees(id, first_name, last_name, department_id, departments(id, name))')
+        .select(USER_SESSION_SELECT)
         .eq('username', username)
         .eq('password', password)
         .eq('is_active', true)
@@ -77,7 +143,7 @@ export function AuthProvider({ children }) {
       // หา user ที่มี hub_user_id ตรงกัน
       const { data: existingUser, error: lookupError } = await supabase
         .from('users')
-        .select('id, username, full_name, email, role, employee_id, is_active, hub_user_id, employees(id, first_name, last_name, department_id, departments(id, name))')
+        .select(USER_SESSION_SELECT)
         .eq('hub_user_id', hubUserId)
         .eq('is_active', true)
         .single();
@@ -111,7 +177,7 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('users')
-      .select('id, username, full_name, email, role, employee_id, is_active, hub_user_id, employees(id, first_name, last_name, department_id, departments(id, name))')
+      .select(USER_SESSION_SELECT)
       .eq('id', userId)
       .eq('is_active', true)
       .single();
@@ -126,8 +192,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
-    setUser(null);
+    clearSession();
     console.log('User logged out');
   };
 

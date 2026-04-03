@@ -2204,21 +2204,6 @@ a:hover {
   max-width: 360px;
 }
 
-.header-context-label {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.35rem 0.7rem;
-  border-radius: var(--radius-full);
-  background: var(--status-success-bg);
-  border: 1px solid var(--status-success-border);
-  color: var(--color-primary-dark);
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.55rem;
-}
-
 .header-context-title {
   font-size: 1.15rem;
   font-weight: 800;
@@ -2717,10 +2702,6 @@ a:hover {
     .header-context {
       flex: 1 1 100%;
       max-width: none;
-    }
-
-    .header-context-label {
-      margin-bottom: 0;
     }
 
     .header-context-title {
@@ -3821,13 +3802,6 @@ body::before {
   box-shadow: var(--surface-shadow-sm) !important;
   backdrop-filter: none !important;
   margin-bottom: 1.5rem !important;
-}
-
-.header-context-label {
-  background: var(--apple-gray-100) !important;
-  border: none !important;
-  color: var(--apple-gray-600) !important;
-  font-size: 0.68rem !important;
 }
 
 .header-context-title {

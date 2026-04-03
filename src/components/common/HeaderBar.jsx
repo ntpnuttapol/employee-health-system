@@ -127,7 +127,6 @@ export default function HeaderBar({ onMenuToggle, isMenuOpen }) {
           >
             {isMenuOpen ? '✕' : '☰'}
           </button>
-          <span className="header-context-label">HR Employee Workspace</span>
         </div>
         <h2 className="header-context-title">{currentRoute.title}</h2>
         <p className="header-context-subtitle">{currentRoute.subtitle}</p>

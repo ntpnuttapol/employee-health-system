@@ -18,6 +18,17 @@ export default function FiveSInspection() {
     e => e.is_active !== false && suvarnabhumiBranch && e.branch_id === suvarnabhumiBranch.id
   );
 
+  // ======== ปิดการให้คะแนนหลัง 20:00 น. ========
+  const CUTOFF_HOUR = 20; // ปิดเวลา 20:00 น.
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const isScoringClosed = currentTime.getHours() >= CUTOFF_HOUR;
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 30000); // อัพเดททุก 30 วินาที
+    return () => clearInterval(timer);
+  }, []);
+  // ===============================================
+
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState({ type: '', message: '' });
   const [monthInspections, setMonthInspections] = useState([]);
@@ -212,6 +223,14 @@ export default function FiveSInspection() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // ตรวจสอบเวลาก่อนบันทึก
+    const now = new Date();
+    if (now.getHours() >= CUTOFF_HOUR) {
+      setStatus({ type: 'error', message: `⏰ หมดเวลาให้คะแนนแล้ว (ปิดหลัง ${CUTOFF_HOUR}:00 น.)` });
+      setCurrentTime(now); // อัพเดท UI
+      return;
+    }
+
     if (!formData.department_id) {
       setStatus({ type: 'error', message: 'กรุณาเลือกแผนก' });
       return;
@@ -338,8 +357,35 @@ export default function FiveSInspection() {
     <div style={{ maxWidth: '900px', margin: '0 auto' }}>
       <div className="page-header">
         <h1 className="page-title">🏆 ตรวจประเมิน 5ส</h1>
-        <p className="page-subtitle">กรอกคะแนนการตรวจ 5ส (5 หัวข้อ หัวข้อละ 10 คะแนน รวม 50 คะแนน)</p>
+        <p className="page-subtitle">
+          กรอกคะแนนการตรวจ 5ส (5 หัวข้อ หัวข้อละ 10 คะแนน รวม 50 คะแนน)
+          <br />
+          <span style={{ fontSize: '0.85rem', color: isScoringClosed ? '#ef4444' : '#6b7280' }}>
+            🕐 เวลาปัจจุบัน: {currentTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.
+            {!isScoringClosed && ` (เปิดให้กรอกคะแนนถึง ${CUTOFF_HOUR}:00 น.)`}
+          </span>
+        </p>
       </div>
+
+      {/* แบนเนอร์ปิดการให้คะแนน */}
+      {isScoringClosed && (
+        <div style={{
+          marginBottom: '1.5rem',
+          padding: '1.25rem 1.5rem',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+          border: '2px solid #fca5a5',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔒</div>
+          <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#dc2626', marginBottom: '0.25rem' }}>
+            ปิดการให้คะแนนแล้ว
+          </div>
+          <div style={{ fontSize: '0.9rem', color: '#991b1b' }}>
+            ระบบปิดการให้คะแนน 5ส หลังเวลา {CUTOFF_HOUR}:00 น. กรุณากลับมาใหม่ในวันถัดไป
+          </div>
+        </div>
+      )}
 
       {status.message && (
         <div className={`alert alert-${status.type}`} style={{ marginBottom: '1.5rem' }}>
@@ -348,7 +394,7 @@ export default function FiveSInspection() {
       )}
 
       {/* Score Entry Form */}
-      <div className="card" style={{ marginBottom: '2rem' }}>
+      <div className="card" style={{ marginBottom: '2rem', opacity: isScoringClosed ? 0.5 : 1, pointerEvents: isScoringClosed ? 'none' : 'auto' }}>
         <h2 style={{ marginBottom: '1.5rem', fontSize: '1.25rem' }}>📝 กรอกผลการตรวจ</h2>
         <form onSubmit={handleSubmit}>
           {/* Department + Date */}

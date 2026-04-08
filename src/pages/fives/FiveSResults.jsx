@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useMasterData } from '../../contexts/MasterDataContext';
 import { useAuth } from '../../contexts/AuthContext';
 import confetti from 'canvas-confetti';
+import heic2any from 'heic2any';
 
 export default function FiveSResults() {
   const { departments, branches, employees, loading: masterLoading } = useMasterData();
@@ -49,6 +50,17 @@ export default function FiveSResults() {
   const [showVoteStatus, setShowVoteStatus] = useState(false);
   const [voteDetails, setVoteDetails] = useState([]);
   const [loadingVoteDetails, setLoadingVoteDetails] = useState(false);
+
+  // Edit modal photo upload states
+  const [editNewPhotos, setEditNewPhotos] = useState([]); // { file, preview, id, comment }
+  const [editUploadingPhotos, setEditUploadingPhotos] = useState(false);
+  const editFileInputRef = useRef(null);
+
+  // Standalone add-photo modal (ไม่ต้องเปิด Edit Window)
+  const [addPhotoItem, setAddPhotoItem] = useState(null); // inspection to add photos to
+  const [addPhotoNewFiles, setAddPhotoNewFiles] = useState([]); // { file, preview, id, comment }
+  const [addPhotoUploading, setAddPhotoUploading] = useState(false);
+  const addPhotoFileInputRef = useRef(null);
 
   // ตรวจสอบว่าเป็นวันย้อนหลังหรือไม่
   const isPastDate = filterDate && filterDate < todayStr;
@@ -2025,6 +2037,216 @@ export default function FiveSResults() {
                     ></textarea>
                   </div>
 
+                  {/* Photo Upload Section in Edit Modal */}
+                  <div className="form-group">
+                    <label className="form-label">📷 รูปภาพ</label>
+
+                    {/* Existing Photos */}
+                    {editItem.photos && editItem.photos.length > 0 && (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                          รูปที่มีอยู่แล้ว ({editItem.photos.length} รูป)
+                        </div>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                          gap: '0.5rem'
+                        }}>
+                          {editItem.photos.map((photo, idx) => (
+                            <div key={photo.id || idx} style={{
+                              aspectRatio: '1',
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              border: '1px solid #e5e7eb',
+                              cursor: 'pointer',
+                              position: 'relative'
+                            }}
+                              onClick={() => setLightboxUrl(photo.url)}
+                            >
+                              <img
+                                src={photo.url}
+                                alt={`รูป ${idx + 1}`}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                              {photo.comment && (
+                                <div style={{
+                                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                                  background: 'rgba(0,0,0,0.6)', color: 'white',
+                                  fontSize: '0.6rem', padding: '2px 4px',
+                                  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                }}>
+                                  {photo.comment}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* New Photos to Add */}
+                    {editNewPhotos.length > 0 && (
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <div style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                          ✨ รูปใหม่ที่จะเพิ่ม ({editNewPhotos.length} รูป)
+                        </div>
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                          gap: '0.5rem'
+                        }}>
+                          {editNewPhotos.map(photo => (
+                            <div key={photo.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                              <div style={{
+                                aspectRatio: '1',
+                                borderRadius: '8px',
+                                overflow: 'hidden',
+                                border: '2px solid #10b981',
+                                position: 'relative'
+                              }}>
+                                <img
+                                  src={photo.preview}
+                                  alt="new"
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setEditNewPhotos(prev => {
+                                      const removed = prev.find(p => p.id === photo.id);
+                                      if (removed) URL.revokeObjectURL(removed.preview);
+                                      return prev.filter(p => p.id !== photo.id);
+                                    });
+                                  }}
+                                  style={{
+                                    position: 'absolute', top: '2px', right: '2px',
+                                    background: '#ef4444', color: 'white', border: 'none',
+                                    borderRadius: '50%', width: '22px', height: '22px',
+                                    fontSize: '0.7rem', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                  }}
+                                  title="ลบ"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="💬 comment..."
+                                value={photo.comment}
+                                onChange={(e) => {
+                                  setEditNewPhotos(prev => prev.map(p =>
+                                    p.id === photo.id ? { ...p, comment: e.target.value } : p
+                                  ));
+                                }}
+                                style={{
+                                  width: '100%', padding: '0.25rem 0.4rem',
+                                  fontSize: '0.7rem', border: '1px solid #e5e7eb',
+                                  borderRadius: '6px', outline: 'none', background: '#f9fafb'
+                                }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Upload Buttons */}
+                    {((editItem.photos?.length || 0) + editNewPhotos.length) < 20 && (
+                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                          onClick={() => {
+                            const inp = document.createElement('input');
+                            inp.type = 'file';
+                            inp.accept = 'image/*';
+                            inp.multiple = true;
+                            inp.onchange = async (e) => {
+                              const files = Array.from(e.target.files);
+                              if (!files.length) return;
+                              const existingCount = (editItem.photos?.length || 0) + editNewPhotos.length;
+                              const remaining = 20 - existingCount;
+                              if (remaining <= 0) { alert('แนบรูปได้สูงสุด 20 รูป'); return; }
+                              const selected = files.slice(0, remaining);
+                              const toAdd = [];
+                              for (const file of selected) {
+                                const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+                                  || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+                                let finalFile = file;
+                                if (isHeic) {
+                                  try {
+                                    const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+                                    finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), { type: 'image/jpeg' });
+                                  } catch (err) { console.error('HEIC conversion failed:', err); }
+                                }
+                                toAdd.push({
+                                  file: finalFile,
+                                  preview: URL.createObjectURL(finalFile),
+                                  id: `edit-${Date.now()}-${Math.random()}`,
+                                  comment: ''
+                                });
+                              }
+                              setEditNewPhotos(prev => [...prev, ...toAdd]);
+                            };
+                            inp.click();
+                          }}
+                        >
+                          🖼️ เลือกรูปจากคลัง
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
+                          onClick={() => editFileInputRef.current?.click()}
+                        >
+                          📸 ถ่ายรูป
+                        </button>
+                        <input
+                          ref={editFileInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          multiple
+                          style={{ display: 'none' }}
+                          onChange={async (e) => {
+                            const files = Array.from(e.target.files);
+                            if (!files.length) return;
+                            const existingCount = (editItem.photos?.length || 0) + editNewPhotos.length;
+                            const remaining = 20 - existingCount;
+                            if (remaining <= 0) { alert('แนบรูปได้สูงสุด 20 รูป'); return; }
+                            const selected = files.slice(0, remaining);
+                            const toAdd = [];
+                            for (const file of selected) {
+                              const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+                                || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+                              let finalFile = file;
+                              if (isHeic) {
+                                try {
+                                  const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+                                  finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), { type: 'image/jpeg' });
+                                } catch (err) { console.error('HEIC conversion failed:', err); }
+                              }
+                              toAdd.push({
+                                file: finalFile,
+                                preview: URL.createObjectURL(finalFile),
+                                id: `edit-${Date.now()}-${Math.random()}`,
+                                comment: ''
+                              });
+                            }
+                            setEditNewPhotos(prev => [...prev, ...toAdd]);
+                            if (e.target) e.target.value = '';
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.4rem' }}>
+                      รวมแนบได้สูงสุด 20 รูป (ปัจจุบัน {(editItem.photos?.length || 0) + editNewPhotos.length} รูป)
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.25rem' }}>
                     <button
                       className="btn btn-primary"
@@ -2083,6 +2305,54 @@ export default function FiveSResults() {
                           .eq('id', editItem.id);
                         
                         if (!error) {
+                          // Upload new photos if any
+                          if (editNewPhotos.length > 0) {
+                            setEditUploadingPhotos(true);
+                            const existingCount = editItem.photos?.length || 0;
+                            const newPhotoRows = [];
+                            const newPhotoUrls = [];
+                            for (let i = 0; i < editNewPhotos.length; i++) {
+                              const photo = editNewPhotos[i];
+                              const ext = photo.file.name.split('.').pop();
+                              const fileName = `five-s/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+                              const { error: upErr } = await supabase.storage
+                                .from('five-s-images')
+                                .upload(fileName, photo.file, { upsert: false });
+                              if (!upErr) {
+                                const { data: urlData } = supabase.storage
+                                  .from('five-s-images')
+                                  .getPublicUrl(fileName);
+                                if (urlData?.publicUrl) {
+                                  newPhotoUrls.push(urlData.publicUrl);
+                                  newPhotoRows.push({
+                                    inspection_id: editItem.id,
+                                    url: urlData.publicUrl,
+                                    comment: photo.comment || '',
+                                    sort_order: existingCount + i
+                                  });
+                                }
+                              } else {
+                                console.error('Upload error:', upErr);
+                              }
+                            }
+                            // Insert photo records
+                            if (newPhotoRows.length > 0) {
+                              await supabase.from('five_s_photos').insert(newPhotoRows);
+                              // Also update photo_urls array on the inspection record
+                              const existingUrls = editItem.photo_urls || [];
+                              await supabase
+                                .from('five_s_inspections')
+                                .update({ photo_urls: [...existingUrls, ...newPhotoUrls] })
+                                .eq('id', editItem.id);
+                            }
+                            // Log photo addition
+                            await logEdit(editItem.id, 'photos_added', `${existingCount} photos`, `${existingCount + newPhotoRows.length} photos`, editType);
+                            // Cleanup previews
+                            editNewPhotos.forEach(p => URL.revokeObjectURL(p.preview));
+                            setEditNewPhotos([]);
+                            setEditUploadingPhotos(false);
+                          }
+
                           // Audit Log — บันทึกทุกฟิลด์ที่เปลี่ยน
                           const fieldMap = {
                             score_improvement: { old: editItem.score_improvement, new: s1 },
@@ -2102,6 +2372,7 @@ export default function FiveSResults() {
                           }
 
                           setEditItem(null);
+                          setEditNewPhotos([]);
                           fetchInspections();
                         } else {
                           alert('เกิดข้อผิดพลาด: ' + error.message);
@@ -2109,11 +2380,11 @@ export default function FiveSResults() {
                         setSaving(false);
                       }}
                     >
-                      {saving ? 'กำลังบันทึก...' : '💾 บันทึกการแก้ไข'}
+                      {saving ? (editUploadingPhotos ? `⏳ กำลังอัพโหลดรูป...` : 'กำลังบันทึก...') : '💾 บันทึกการแก้ไข'}
                     </button>
                     <button
                       className="btn btn-secondary"
-                      onClick={() => setEditItem(null)}
+                      onClick={() => { editNewPhotos.forEach(p => URL.revokeObjectURL(p.preview)); setEditNewPhotos([]); setEditItem(null); }}
                     >
                       ยกเลิก
                     </button>
@@ -2208,7 +2479,7 @@ export default function FiveSResults() {
                             <td style={{ textAlign: 'center' }}>{ins.score_helpfulness || 0}</td>
                             <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{ins.total_score}/50</td>
                             <td style={{ fontSize: '0.85rem', color: '#6b7280' }}>{ins.notes || '-'}</td>
-                            <td style={{ textAlign: 'center' }}>
+                            <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                               {((ins.photos && ins.photos.length > 0) || (ins.photo_urls && ins.photo_urls.length > 0)) ? (
                                 <button
                                   onClick={() => setGalleryPhotos(ins.photos && ins.photos.length > 0 ? ins.photos : (ins.photo_urls || []).map(u => ({ url: u, comment: '' })))}
@@ -2225,6 +2496,23 @@ export default function FiveSResults() {
                                 </button>
                               ) : (
                                 <span style={{ color: '#d1d5db', fontSize: '0.75rem' }}>—</span>
+                              )}
+                              {/* ปุ่มเพิ่มรูปแยก — ใช้ได้ตลอดไม่ต้องเปิด Edit Window */}
+                              {(adminMode || isOwnInspection(ins)) && (
+                                <button
+                                  onClick={() => { setAddPhotoItem(ins); setAddPhotoNewFiles([]); }}
+                                  style={{
+                                    background: 'none', border: '1px solid #10b981',
+                                    borderRadius: '8px', cursor: 'pointer',
+                                    padding: '0.2rem 0.4rem', fontSize: '0.75rem',
+                                    display: 'inline-flex', alignItems: 'center', gap: '2px',
+                                    color: '#059669', marginLeft: '4px',
+                                    fontWeight: 'bold'
+                                  }}
+                                  title="เพิ่มรูปภาพ"
+                                >
+                                  📷+
+                                </button>
                               )}
                             </td>
                             {(adminMode || isEditWindowOpen) && (
@@ -2286,6 +2574,280 @@ export default function FiveSResults() {
           </div>
         </>
       )}
+      {/* Add Photo Modal (ไม่ต้องเปิด Edit Window) */}
+      {addPhotoItem && (
+        <div
+          onClick={() => { addPhotoNewFiles.forEach(p => URL.revokeObjectURL(p.preview)); setAddPhotoNewFiles([]); setAddPhotoItem(null); }}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="card"
+            style={{
+              width: '90%', maxWidth: '520px', maxHeight: '90vh', overflow: 'auto',
+              position: 'relative', zIndex: 1001
+            }}
+          >
+            <h2 style={{ marginBottom: '0.5rem', fontSize: '1.15rem' }}>📷 เพิ่มรูปภาพ</h2>
+            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+              แผนก: <strong>{addPhotoItem.departments?.name || '-'}</strong>
+              {' · '}
+              วันที่: <strong>{new Date(addPhotoItem.inspection_date).toLocaleDateString('th-TH')}</strong>
+              {' · '}
+              ผู้ตรวจ: <strong>{addPhotoItem.inspector_name || '-'}</strong>
+            </div>
+
+            {/* Existing Photos */}
+            {addPhotoItem.photos && addPhotoItem.photos.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.8rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                  รูปที่มีอยู่แล้ว ({addPhotoItem.photos.length} รูป)
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))',
+                  gap: '0.4rem'
+                }}>
+                  {addPhotoItem.photos.map((photo, idx) => (
+                    <div key={photo.id || idx} style={{
+                      aspectRatio: '1', borderRadius: '8px', overflow: 'hidden',
+                      border: '1px solid #e5e7eb', cursor: 'pointer'
+                    }} onClick={() => setLightboxUrl(photo.url)}>
+                      <img src={photo.url} alt={`รูป ${idx + 1}`}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* New Photos to Add */}
+            {addPhotoNewFiles.length > 0 && (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ fontSize: '0.8rem', color: '#059669', fontWeight: 'bold', marginBottom: '0.5rem' }}>
+                  ✨ รูปใหม่ที่จะเพิ่ม ({addPhotoNewFiles.length} รูป)
+                </div>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+                  gap: '0.5rem'
+                }}>
+                  {addPhotoNewFiles.map(photo => (
+                    <div key={photo.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <div style={{
+                        aspectRatio: '1', borderRadius: '8px', overflow: 'hidden',
+                        border: '2px solid #10b981', position: 'relative'
+                      }}>
+                        <img src={photo.preview} alt="new"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddPhotoNewFiles(prev => {
+                              const removed = prev.find(p => p.id === photo.id);
+                              if (removed) URL.revokeObjectURL(removed.preview);
+                              return prev.filter(p => p.id !== photo.id);
+                            });
+                          }}
+                          style={{
+                            position: 'absolute', top: '2px', right: '2px',
+                            background: '#ef4444', color: 'white', border: 'none',
+                            borderRadius: '50%', width: '22px', height: '22px',
+                            fontSize: '0.7rem', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                          }}
+                          title="ลบ"
+                        >✕</button>
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="💬 comment..."
+                        value={photo.comment}
+                        onChange={(e) => {
+                          setAddPhotoNewFiles(prev => prev.map(p =>
+                            p.id === photo.id ? { ...p, comment: e.target.value } : p
+                          ));
+                        }}
+                        style={{
+                          width: '100%', padding: '0.25rem 0.4rem',
+                          fontSize: '0.7rem', border: '1px solid #e5e7eb',
+                          borderRadius: '6px', outline: 'none', background: '#f9fafb'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Buttons */}
+            {((addPhotoItem.photos?.length || 0) + addPhotoNewFiles.length) < 20 && (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
+                  onClick={() => {
+                    const inp = document.createElement('input');
+                    inp.type = 'file';
+                    inp.accept = 'image/*';
+                    inp.multiple = true;
+                    inp.onchange = async (e) => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      const existingCount = (addPhotoItem.photos?.length || 0) + addPhotoNewFiles.length;
+                      const remaining = 20 - existingCount;
+                      if (remaining <= 0) { alert('แนบรูปได้สูงสุด 20 รูป'); return; }
+                      const selected = files.slice(0, remaining);
+                      const toAdd = [];
+                      for (const file of selected) {
+                        const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+                          || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+                        let finalFile = file;
+                        if (isHeic) {
+                          try {
+                            const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+                            finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), { type: 'image/jpeg' });
+                          } catch (err) { console.error('HEIC conversion failed:', err); }
+                        }
+                        toAdd.push({
+                          file: finalFile,
+                          preview: URL.createObjectURL(finalFile),
+                          id: `addp-${Date.now()}-${Math.random()}`,
+                          comment: ''
+                        });
+                      }
+                      setAddPhotoNewFiles(prev => [...prev, ...toAdd]);
+                    };
+                    inp.click();
+                  }}
+                >
+                  🖼️ เลือกจากคลัง
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}
+                  onClick={() => addPhotoFileInputRef.current?.click()}
+                >
+                  📸 ถ่ายรูป
+                </button>
+                <input
+                  ref={addPhotoFileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files);
+                    if (!files.length) return;
+                    const existingCount = (addPhotoItem.photos?.length || 0) + addPhotoNewFiles.length;
+                    const remaining = 20 - existingCount;
+                    if (remaining <= 0) { alert('แนบรูปได้สูงสุด 20 รูป'); return; }
+                    const selected = files.slice(0, remaining);
+                    const toAdd = [];
+                    for (const file of selected) {
+                      const isHeic = file.type === 'image/heic' || file.type === 'image/heif'
+                        || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+                      let finalFile = file;
+                      if (isHeic) {
+                        try {
+                          const blob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.85 });
+                          finalFile = new File([blob], file.name.replace(/\.heic$/i, '.jpg').replace(/\.heif$/i, '.jpg'), { type: 'image/jpeg' });
+                        } catch (err) { console.error('HEIC conversion failed:', err); }
+                      }
+                      toAdd.push({
+                        file: finalFile,
+                        preview: URL.createObjectURL(finalFile),
+                        id: `addp-${Date.now()}-${Math.random()}`,
+                        comment: ''
+                      });
+                    }
+                    setAddPhotoNewFiles(prev => [...prev, ...toAdd]);
+                    if (e.target) e.target.value = '';
+                  }}
+                />
+              </div>
+            )}
+            <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: '1rem' }}>
+              รวมแนบได้สูงสุด 20 รูป (ปัจจุบัน {(addPhotoItem.photos?.length || 0) + addPhotoNewFiles.length} รูป)
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                disabled={addPhotoNewFiles.length === 0 || addPhotoUploading}
+                onClick={async () => {
+                  if (addPhotoNewFiles.length === 0) return;
+                  setAddPhotoUploading(true);
+                  const existingCount = addPhotoItem.photos?.length || 0;
+                  const newPhotoRows = [];
+                  const newPhotoUrls = [];
+                  for (let i = 0; i < addPhotoNewFiles.length; i++) {
+                    const photo = addPhotoNewFiles[i];
+                    const ext = photo.file.name.split('.').pop();
+                    const fileName = `five-s/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+                    const { error: upErr } = await supabase.storage
+                      .from('five-s-images')
+                      .upload(fileName, photo.file, { upsert: false });
+                    if (!upErr) {
+                      const { data: urlData } = supabase.storage
+                        .from('five-s-images')
+                        .getPublicUrl(fileName);
+                      if (urlData?.publicUrl) {
+                        newPhotoUrls.push(urlData.publicUrl);
+                        newPhotoRows.push({
+                          inspection_id: addPhotoItem.id,
+                          url: urlData.publicUrl,
+                          comment: photo.comment || '',
+                          sort_order: existingCount + i
+                        });
+                      }
+                    } else {
+                      console.error('Upload error:', upErr);
+                    }
+                  }
+                  if (newPhotoRows.length > 0) {
+                    await supabase.from('five_s_photos').insert(newPhotoRows);
+                    // Update photo_urls on the inspection record
+                    const existingUrls = addPhotoItem.photo_urls || [];
+                    await supabase
+                      .from('five_s_inspections')
+                      .update({ photo_urls: [...existingUrls, ...newPhotoUrls] })
+                      .eq('id', addPhotoItem.id);
+                    // Audit log
+                    await logEdit(addPhotoItem.id, 'photos_added', `${existingCount} photos`, `${existingCount + newPhotoRows.length} photos`, 'photo_add');
+                  }
+                  // Cleanup
+                  addPhotoNewFiles.forEach(p => URL.revokeObjectURL(p.preview));
+                  setAddPhotoNewFiles([]);
+                  setAddPhotoUploading(false);
+                  setAddPhotoItem(null);
+                  fetchInspections();
+                  alert(`✅ เพิ่มรูปสำเร็จ ${newPhotoRows.length} รูป`);
+                }}
+              >
+                {addPhotoUploading ? '⏳ กำลังอัพโหลดรูป...' : `📷 อัพโหลดรูป (${addPhotoNewFiles.length})`}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { addPhotoNewFiles.forEach(p => URL.revokeObjectURL(p.preview)); setAddPhotoNewFiles([]); setAddPhotoItem(null); }}
+              >
+                ยกเลิก
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Lightbox */}
       {lightboxUrl && (
         <div

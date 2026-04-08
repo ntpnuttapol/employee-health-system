@@ -1697,6 +1697,8 @@ export default function FiveSResults() {
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>เปลี่ยนแปลง</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>สะอาด</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ท้าทาย</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ร่วมมือ</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>ช่วยเหลือ</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1' }}>คะแนนเดิม</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', border: '1px solid #6dcba1', background: '#4ade80', color: 'black' }}>คะแนนโหวต</th>
 
@@ -1723,6 +1725,8 @@ export default function FiveSResults() {
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalImprovement}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalCleanliness}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalInnovation}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalCooperation}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>{dept.totalHelpfulness}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                           <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: barColor }}>{dept.totalScore}</span>
                         </td>
@@ -1779,6 +1783,8 @@ export default function FiveSResults() {
                         <th style={{ textAlign: 'center' }}>เปลี่ยนแปลง<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
                         <th style={{ textAlign: 'center' }}>สะอาด<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
                         <th style={{ textAlign: 'center' }}>ท้าทาย<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                        <th style={{ textAlign: 'center' }}>ร่วมมือ<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
+                        <th style={{ textAlign: 'center' }}>ช่วยเหลือ<br /><span style={{ fontWeight: 'normal', fontSize: '0.75rem' }}>(รวม)</span></th>
                         <th style={{ textAlign: 'center' }}>คะแนนเดิม</th>
                         <th style={{ textAlign: 'center', color: '#16a34a' }}>คะแนนโหวต</th>
                         <th style={{ textAlign: 'center' }}>รูป</th>
@@ -1805,6 +1811,8 @@ export default function FiveSResults() {
                             <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalImprovement}</td>
                             <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalCleanliness}</td>
                             <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalInnovation}</td>
+                            <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalCooperation}</td>
+                            <td style={{ textAlign: 'center', fontWeight: '600' }}>{dept.totalHelpfulness}</td>
                             <td style={{ textAlign: 'center' }}>
                               <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: barColor }}>{dept.totalScore}</span>
                             </td>
@@ -1867,9 +1875,11 @@ export default function FiveSResults() {
                     </div>
                     {/* Row 2 — Sub-scores */}
                     <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.78rem', color: '#6b7280', flexWrap: 'wrap' }}>
-                      <span>🔄 เปลี่ยนแปลง: <strong style={{ color: '#374151' }}>{dept.totalImprovement}</strong></span>
+                      <span>🔄 เปลี่ยน: <strong style={{ color: '#374151' }}>{dept.totalImprovement}</strong></span>
                       <span>🧹 สะอาด: <strong style={{ color: '#374151' }}>{dept.totalCleanliness}</strong></span>
                       <span>💡 ท้าทาย: <strong style={{ color: '#374151' }}>{dept.totalInnovation}</strong></span>
+                      <span>🤝 ร่วมมือ: <strong style={{ color: '#374151' }}>{dept.totalCooperation}</strong></span>
+                      <span>❤️ ช่วยเหลือ: <strong style={{ color: '#374151' }}>{dept.totalHelpfulness}</strong></span>
                       <span>📋 ตรวจ: <strong style={{ color: '#374151' }}>{dept.count} ครั้ง</strong></span>
                     </div>
                     {/* Row 3 — Bar */}

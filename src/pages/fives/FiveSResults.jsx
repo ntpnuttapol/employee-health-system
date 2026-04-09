@@ -483,21 +483,6 @@ export default function FiveSResults() {
       ? new Date(filterDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
       : 'ทั้งหมด';
 
-    // Helper: สร้าง score card พร้อม progress bar
-    const makeScoreCard = (emoji, label, value, max, barColor) => {
-      const pct = Math.round((value / max) * 100);
-      return `<div style="flex:1;min-width:80px;background:#f9fafb;border:1px solid #f0f0f0;border-radius:8px;padding:8px 6px;text-align:center;position:relative;overflow:hidden;">
-        <div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-bottom:4px;">
-          <span style="font-size:11px;">${emoji}</span>
-          <span style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;">${label}</span>
-        </div>
-        <div style="font-size:15px;font-weight:900;color:#1f2937;">${value}<span style="font-size:10px;font-weight:400;color:#9ca3af;margin-left:1px;">/${max}</span></div>
-        <div style="position:absolute;bottom:0;left:0;width:100%;height:3px;background:#e5e7eb;">
-          <div style="width:${pct}%;height:3px;background:${barColor};border-radius:0 2px 0 0;"></div>
-        </div>
-      </div>`;
-    };
-
     const deptSections = Object.entries(grouped).map(([deptName, records]) => {
       const inspectionBlocks = records.map(ins => {
         const dateStr = new Date(ins.inspection_date).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -505,15 +490,6 @@ export default function FiveSResults() {
         const allPhotos = ins.photos && ins.photos.length > 0 
           ? ins.photos 
           : (ins.photo_urls || []).map(url => ({ url, comment: '' }));
-
-        // Score cards row
-        const scoreCards = [
-          makeScoreCard('🔄', 'เปลี่ยนแปลง', ins.score_improvement, 10, '#3b82f6'),
-          makeScoreCard('✨', 'สะอาด', ins.score_cleanliness, 10, '#10b981'),
-          makeScoreCard('🎯', 'ท้าทาย', ins.score_innovation, 10, '#f59e0b'),
-          makeScoreCard('🤝', 'ร่วมมือ', ins.score_cooperation || 0, 10, '#f97316'),
-          makeScoreCard('❤️', 'ช่วยเหลือ', ins.score_helpfulness || 0, 10, '#ef4444'),
-        ].join('');
 
         // Notes section
         const notesStr = ins.notes 
@@ -553,22 +529,14 @@ export default function FiveSResults() {
         return `
           <div style="break-inside:avoid;page-break-inside:avoid;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,0.04);">
             <!-- Header bar -->
-            <div style="background:#f9fafb;padding:10px 16px;border-bottom:1px solid #e5e7eb;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;">
+            <div style="background:#f9fafb;padding:10px 16px;border-bottom:1px solid #e5e7eb;display:flex;flex-wrap:wrap;align-items:center;gap:14px;">
               <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;font-size:13px;">
                 <span style="color:#374151;display:flex;align-items:center;gap:4px;">📅 <strong>วันที่ตรวจ:</strong> ${dateStr}</span>
                 <span style="color:#374151;display:flex;align-items:center;gap:4px;">👤 <strong>ผู้ตรวจ:</strong> ${ins.inspector_name || '—'}</span>
               </div>
-              <div style="display:flex;align-items:center;gap:6px;background:#d1fae5;border:1px solid #a7f3d0;padding:4px 10px;border-radius:6px;">
-                <span style="font-size:12px;">⭐</span>
-                <span style="font-weight:800;color:#065f46;font-size:13px;">รวม: ${ins.total_score}/50</span>
-              </div>
             </div>
             <!-- Body -->
             <div style="padding:16px;">
-              <!-- Score cards -->
-              <div style="display:flex;gap:8px;margin-bottom:16px;">
-                ${scoreCards}
-              </div>
               <!-- Notes -->
               ${notesStr}
               <!-- Photos -->

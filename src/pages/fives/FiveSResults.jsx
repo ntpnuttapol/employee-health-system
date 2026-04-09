@@ -26,6 +26,7 @@ export default function FiveSResults() {
     e => e.is_active !== false && suvarnabhumiBranch && e.branch_id === suvarnabhumiBranch.id
   );
   const [inspections, setInspections] = useState([]);
+  const [departmentPhotoInspections, setDepartmentPhotoInspections] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Default ให้เป็นวันที่ปัจจุบัน YYYY-MM-DD
@@ -65,6 +66,8 @@ export default function FiveSResults() {
   // ตรวจสอบว่าเป็นวันย้อนหลังหรือไม่
   const isPastDate = filterDate && filterDate < todayStr;
   const currentInspectorEmployeeId = user?.employees?.id ? String(user.employees.id) : '';
+  const currentDepartmentId = user?.employees?.department_id ? String(user.employees.department_id) : '';
+  const currentDepartmentName = user?.employees?.departments?.name || '';
   const currentInspectorName = user?.employees
     ? `${user.employees.first_name || ''} ${user.employees.last_name || ''}`.trim()
     : (user?.full_name || user?.username || '').trim();
@@ -99,6 +102,17 @@ export default function FiveSResults() {
 
     return false;
   }, [currentInspectorEmployeeId, currentInspectorName]);
+
+  const canViewDepartmentPhotoInspection = useCallback((inspection) => {
+    if (!inspection) return false;
+    if (adminMode) return true;
+
+    return Boolean(
+      currentDepartmentId &&
+      inspection.department_id &&
+      String(inspection.department_id) === currentDepartmentId
+    );
+  }, [adminMode, currentDepartmentId]);
 
   // Edit Window State
   const [editWindow, setEditWindow] = useState(null); // current active edit window for filterDate
@@ -464,7 +478,10 @@ export default function FiveSResults() {
   // ออกรีพอร์ตรูปภาพและหมายเหตุแยกตามแผนก (Premium Design)
   const printPhotoReport = () => {
     // จัดกลุ่มการตรวจที่มีรูปภาพหรือหมายเหตุ ตามชื่อแผนก (กรองตามวันที่)
-    const dataToReport = filterDate ? filtered : inspections;
+    const photoReportSource = adminMode ? inspections : departmentPhotoInspections;
+    const dataToReport = filterDate
+      ? photoReportSource.filter(ins => ins.inspection_date === filterDate)
+      : photoReportSource;
     const allWithPhotosOrNotes = dataToReport.filter(ins => (ins.photos && ins.photos.length > 0) || (ins.photo_urls && ins.photo_urls.length > 0) || (ins.notes && ins.notes.trim() !== ''));
     if (allWithPhotosOrNotes.length === 0) {
       alert('ยังไม่มีรูปภาพหรือหมายเหตุในระบบ กรุณาอัปโหลดก่อนออกรายงาน');
@@ -598,6 +615,7 @@ export default function FiveSResults() {
 
     if (!adminMode && !hasInspectorIdentity) {
       setInspections([]);
+      setDepartmentPhotoInspections([]);
       setLoading(false);
       return;
     }
@@ -637,6 +655,7 @@ export default function FiveSResults() {
       }));
 
       setInspections(adminMode ? enriched : enriched.filter(isOwnInspection));
+      setDepartmentPhotoInspections(adminMode ? enriched : enriched.filter(canViewDepartmentPhotoInspection));
     }
     setLoading(false);
   };
@@ -667,12 +686,22 @@ export default function FiveSResults() {
 
   useEffect(() => {
     fetchInspections();
-  }, [adminMode, hasInspectorIdentity, isOwnInspection]);
+  }, [adminMode, canViewDepartmentPhotoInspection, hasInspectorIdentity, isOwnInspection]);
 
   // Filter by EXACT DATE
   const filtered = filterDate
     ? inspections.filter(i => i.inspection_date === filterDate)
     : inspections;
+
+  const departmentPhotoRecords = (filterDate
+    ? departmentPhotoInspections.filter(i => i.inspection_date === filterDate)
+    : departmentPhotoInspections
+  ).filter(
+    ins =>
+      (ins.photos && ins.photos.length > 0) ||
+      (ins.photo_urls && ins.photo_urls.length > 0) ||
+      (ins.notes && ins.notes.trim() !== '')
+  );
 
   // Build department ranking from filtered data
   const departmentRanking = (() => {
@@ -803,6 +832,104 @@ export default function FiveSResults() {
               ? 'ระบบจะซ่อนคะแนนของผู้ใช้งานคนอื่น และให้คุณดูเฉพาะรายการที่ตัวเองกรอกตรวจ 5ส เท่านั้น'
               : 'กรุณาติดต่อผู้ดูแลระบบเพื่อเชื่อมบัญชีผู้ใช้งานกับข้อมูลพนักงานก่อนใช้งานหน้าผลคะแนน 5ส'}
           </div>
+        </div>
+      )}
+
+      {!adminMode && hasInspectorIdentity && currentDepartmentId && (
+        <div className="card" style={{ marginBottom: '1rem', background: '#f8fafc', border: '1px solid #dbeafe' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.85rem' }}>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#1d4ed8', marginBottom: '0.35rem' }}>
+                📸 รูปและหมายเหตุของแผนกคุณ
+              </div>
+              <div style={{ fontSize: '0.9rem', color: '#475569', lineHeight: 1.5 }}>
+                คุณสามารถดูรูปภาพและคอมเมนต์ที่ผู้ตรวจคนอื่นบันทึกไว้ในแผนก <strong>{currentDepartmentName || 'ของคุณ'}</strong> ได้จากส่วนนี้ โดยระบบจะไม่แสดงคะแนนของผู้อื่น
+              </div>
+            </div>
+            <div style={{ fontSize: '0.85rem', color: '#64748b', whiteSpace: 'nowrap' }}>
+              {departmentPhotoRecords.length} รายการ
+            </div>
+          </div>
+
+          {departmentPhotoRecords.length === 0 ? (
+            <div style={{ fontSize: '0.9rem', color: '#6b7280' }}>
+              ยังไม่มีรูปภาพหรือหมายเหตุของแผนกนี้ในช่วงวันที่เลือก
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {departmentPhotoRecords.map((ins) => {
+                const photoCount = ins.photos && ins.photos.length > 0
+                  ? ins.photos.length
+                  : (ins.photo_urls || []).length;
+                const inspectorDisplayName = (() => {
+                  if (ins.inspector_employee_id) {
+                    const emp = activeEmployees.find(e => e.id === ins.inspector_employee_id);
+                    return emp ? `${emp.first_name} ${emp.last_name}` : ins.inspector_name;
+                  }
+                  return ins.inspector_name || '-';
+                })();
+
+                return (
+                  <div
+                    key={`dept-photo-${ins.id}`}
+                    style={{
+                      border: '1px solid #dbeafe',
+                      borderRadius: '12px',
+                      background: 'white',
+                      padding: '0.85rem 1rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: '1rem',
+                      alignItems: 'flex-start',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: '240px' }}>
+                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.45rem', fontSize: '0.85rem', color: '#64748b' }}>
+                        <span>📅 {new Date(ins.inspection_date).toLocaleDateString('th-TH')}</span>
+                        <span>👤 {inspectorDisplayName}</span>
+                        <span>🏢 {ins.departments?.name || '-'}</span>
+                      </div>
+                      <div style={{ fontSize: '0.92rem', color: '#334155', lineHeight: 1.55 }}>
+                        {ins.notes && ins.notes.trim() !== '' ? (
+                          <>💬 {ins.notes}</>
+                        ) : (
+                          <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>ไม่มีหมายเหตุเพิ่มเติม</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {photoCount > 0 ? (
+                      <button
+                        onClick={() => setGalleryPhotos(ins.photos && ins.photos.length > 0 ? ins.photos : (ins.photo_urls || []).map(u => ({ url: u, comment: '' })))}
+                        style={{
+                          background: 'white',
+                          border: '1px solid #93c5fd',
+                          borderRadius: '10px',
+                          cursor: 'pointer',
+                          padding: '0.55rem 0.85rem',
+                          fontSize: '0.85rem',
+                          fontWeight: 'bold',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.45rem',
+                          color: '#2563eb',
+                          whiteSpace: 'nowrap'
+                        }}
+                        title={`ดูรูป ${photoCount} รูป`}
+                      >
+                        🔍 ดูรูป / คอมเมนต์ ({photoCount})
+                      </button>
+                    ) : (
+                      <span style={{ fontSize: '0.82rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                        ไม่มีรูปแนบ
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

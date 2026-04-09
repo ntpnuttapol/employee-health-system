@@ -508,15 +508,15 @@ export default function FiveSResults() {
               <div style="font-size:10px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;display:flex;align-items:center;gap:4px;">
                 📷 รายการรูปภาพจากการตรวจ (${allPhotos.length})
               </div>
-              <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:10px;">
+              <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:12px;">
                 ${allPhotos.map((photo, pIdx) => `
-                  <div style="display:flex;background:#fff;border:1px solid #e5e7eb;border-radius:8px;padding:8px;gap:10px;break-inside:avoid;">
-                    <div style="width:80px;height:100px;flex-shrink:0;border-radius:6px;overflow:hidden;background:#f3f4f6;border:1px solid #f0f0f0;">
+                  <div style="display:flex;background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;gap:12px;break-inside:avoid;">
+                    <div style="width:118px;height:148px;flex-shrink:0;border-radius:8px;overflow:hidden;background:#f3f4f6;border:1px solid #f0f0f0;">
                       <img src="${photo.url}" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'text-align:center;padding:20px 4px;font-size:11px;color:#9ca3af;\\'>⚠️<br>โหลดไม่ได้</div>';" />
                     </div>
-                    <div style="flex:1;display:flex;flex-direction:column;padding:2px 0;">
-                      <span style="font-size:10px;font-weight:700;background:#f3f4f6;color:#6b7280;padding:2px 6px;border-radius:3px;display:inline-block;width:fit-content;margin-bottom:6px;">ภาพที่ ${pIdx + 1}</span>
-                      <p style="font-size:12px;color:#374151;line-height:1.5;margin:0;word-break:break-word;">
+                    <div style="flex:1;display:flex;flex-direction:column;padding:4px 0;">
+                      <span style="font-size:11px;font-weight:700;background:#f3f4f6;color:#6b7280;padding:3px 8px;border-radius:999px;display:inline-block;width:fit-content;margin-bottom:8px;">ภาพที่ ${pIdx + 1}</span>
+                      <p style="font-size:13px;color:#374151;line-height:1.6;margin:0;word-break:break-word;">
                         ${photo.comment ? photo.comment : '<span style="color:#9ca3af;font-style:italic;">ไม่มีคำอธิบาย</span>'}
                       </p>
                     </div>
